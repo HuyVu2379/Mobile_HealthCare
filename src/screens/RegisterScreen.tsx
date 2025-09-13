@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Image,
+  ImageBackground
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
@@ -38,6 +40,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
+      <ImageBackground
+        source={require('../assets/background.png')} // đường dẫn ảnh
+        style={styles.container}
+        resizeMode="cover" // hoặc "stretch", "contain"
+      >
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -48,10 +55,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
           
           {/* Logo Placeholder */}
           <View style={styles.logoContainer}>
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoText}>HEALTHCARE</Text>
-              <Text style={styles.logoSubtext}>LOGO</Text>
-            </View>
+            <Image
+              source={require('../assets/Logo.png')} // Replace with your logo path
+              resizeMode="contain"
+            />
           </View>
 
           {/* Registration Form */}
@@ -67,7 +74,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   emailFocused && styles.inputFocused,
                 ]}
                 placeholder="Email"
-                placeholderTextColor={theme.colors.text.disabled}
+                placeholderTextColor={theme.colors.text.inverse}
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setEmailFocused(true)}
@@ -86,7 +93,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   passwordFocused && styles.inputFocused,
                 ]}
                 placeholder="Mật khẩu"
-                placeholderTextColor={theme.colors.text.disabled}
+                placeholderTextColor={theme.colors.text.inverse}
                 value={password}
                 onChangeText={setPassword}
                 onFocus={() => setPasswordFocused(true)}
@@ -131,6 +138,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      </ImageBackground>
     </SafeAreaView>
   );
 };
@@ -154,29 +162,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: theme.spacing[12],
-  },
-  logoPlaceholder: {
-    width: 120,
-    height: 120,
-    backgroundColor: theme.colors.glassmorphism.background,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: theme.dimensions.borderWidth.base,
-    borderColor: theme.colors.glassmorphism.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.shadows.glassmorphism,
-  },
-  logoText: {
-    ...theme.typography.h6,
-    color: theme.colors.primary[600],
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  logoSubtext: {
-    ...theme.typography.caption,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginTop: theme.spacing[1],
   },
 
   // Form container
@@ -229,6 +214,7 @@ const styles = StyleSheet.create({
   checkboxText: {
     ...theme.components.checkbox.text,
     lineHeight: theme.fontSize.sm * 1.4,
+    color: theme.colors.text.primary,
   },
 
   // Register button
@@ -254,7 +240,7 @@ const styles = StyleSheet.create({
   },
   loginText: {
     ...theme.typography.body2,
-    color: theme.colors.text.secondary,
+    color: theme.colors.text.primary,
   },
   loginLinkText: {
     ...theme.typography.body2,

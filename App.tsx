@@ -1,44 +1,55 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
+ * Mobile Healthcare App
+ * Registration Screen Demo
  *
  * @format
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React from 'react';
+import { StatusBar, StyleSheet, View, ImageBackground } from 'react-native';
 import {
   SafeAreaProvider,
-  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { RegisterScreen } from './src/screens';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const handleLoginPress = () => {
+    console.log('Navigate to login screen');
+    // TODO: Navigate to login screen
+  };
+
+  const handleRegisterPress = (
+    email: string,
+    password: string,
+    agreedToTerms: boolean,
+  ) => {
+    console.log('Register:', { email, password, agreedToTerms });
+    // TODO: Handle registration logic
+  };
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <View style={styles.container}>
+        {/* Background placeholder - user will replace with their image */}
+        <View style={styles.backgroundPlaceholder}>
+          <RegisterScreen
+            onLoginPress={handleLoginPress}
+            onRegisterPress={handleRegisterPress}
+          />
+        </View>
+      </View>
     </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  backgroundPlaceholder: {
+    flex: 1,
+    backgroundColor: '#E3F2FD', // Light blue background as placeholder
   },
 });
 
