@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
+import { Lucide } from '@react-native-vector-icons/lucide';
 
 interface RegisterScreenProps {
   onLoginPress?: () => void;
@@ -29,6 +30,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = () => {
     if (onRegisterPress) {
@@ -45,99 +47,102 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
         style={styles.container}
         resizeMode="cover" // hoặc "stretch", "contain"
       >
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          
-          {/* Logo Placeholder */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/Logo.png')} // Replace with your logo path
-              resizeMode="contain"
-            />
-          </View>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
 
-          {/* Registration Form */}
-          <View style={styles.formContainer}>
-            {/* Title */}
-            <Text style={styles.title}>Đăng ký tài khoản</Text>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[
-                  styles.input,
-                  emailFocused && styles.inputFocused,
-                ]}
-                placeholder="Email"
-                placeholderTextColor={theme.colors.text.inverse}
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
+            {/* Logo Placeholder */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/Logo.png')} // Replace with your logo path
+                resizeMode="contain"
               />
             </View>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[
-                  styles.input,
-                  passwordFocused && styles.inputFocused,
-                ]}
-                placeholder="Mật khẩu"
-                placeholderTextColor={theme.colors.text.inverse}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+            {/* Registration Form */}
+            <View style={styles.formContainer}>
+              {/* Title */}
+              <Text style={styles.title}>Đăng ký</Text>
 
-            {/* Terms and Conditions Checkbox */}
-            <Pressable
-              style={styles.checkboxContainer}
-              onPress={() => setAgreedToTerms(!agreedToTerms)}>
-              <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
-                {agreedToTerms && <Text style={styles.checkboxTick}>✓</Text>}
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    emailFocused && styles.inputFocused,
+                  ]}
+                  placeholder="Email"
+                  placeholderTextColor={theme.colors.text.inverse}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
-              <Text style={styles.checkboxText}>
-                Tôi đồng ý với điều khoản sử dụng website
-              </Text>
-            </Pressable>
 
-            {/* Register Button */}
-            <TouchableOpacity
-              style={[
-                styles.registerButton,
-                !isFormValid && styles.registerButtonDisabled,
-              ]}
-              onPress={handleRegister}
-              disabled={!isFormValid}
-              activeOpacity={0.8}>
-              <Text style={styles.registerButtonText}>Đăng ký</Text>
-            </TouchableOpacity>
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    passwordFocused && styles.inputFocused,
+                  ]}
+                  placeholder="Mật khẩu"
+                  placeholderTextColor={theme.colors.text.inverse}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: [{ translateY: -7 }] }}>
+                  <Lucide name={showPassword ? "eye-closed" : "eye"} size={20} />
+                </TouchableOpacity>
+              </View>
 
-            {/* Login Link */}
-            <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>Đã có tài khoản? </Text>
-              <TouchableOpacity onPress={onLoginPress} activeOpacity={0.7}>
-                <Text style={styles.loginLinkText}>Đăng nhập</Text>
+              {/* Terms and Conditions Checkbox */}
+              <Pressable
+                style={styles.checkboxContainer}
+                onPress={() => setAgreedToTerms(!agreedToTerms)}>
+                <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                  {agreedToTerms && <Text style={styles.checkboxTick}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxText}>
+                  Tôi đồng ý với điều khoản sử dụng của ứng dụng
+                </Text>
+              </Pressable>
+
+              {/* Register Button */}
+              <TouchableOpacity
+                style={[
+                  styles.registerButton,
+                  !isFormValid && styles.registerButtonDisabled,
+                ]}
+                onPress={handleRegister}
+                disabled={!isFormValid}
+                activeOpacity={0.8}>
+                <Text style={styles.registerButtonText}>Đăng ký</Text>
               </TouchableOpacity>
+
+              {/* Login Link */}
+              <View style={styles.loginLinkContainer}>
+                <Text style={styles.loginText}>Đã có tài khoản? </Text>
+                <TouchableOpacity onPress={onLoginPress} activeOpacity={0.7}>
+                  <Text style={styles.loginLinkText}>Đăng nhập</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </ImageBackground>
     </SafeAreaView>
   );
@@ -189,6 +194,7 @@ const styles = StyleSheet.create({
     ...theme.components.input.default,
     backgroundColor: theme.colors.glassmorphism.background,
     borderColor: theme.colors.glassmorphism.border,
+    paddingRight: 35
   },
   inputFocused: {
     ...theme.components.input.focused,
