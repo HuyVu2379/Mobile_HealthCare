@@ -12,7 +12,21 @@ export const theme = {
   borderRadius,
   shadows,
   dimensions,
-  
+
+  layout: {
+    dflexRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+    },
+  },
+  text: {
+    bannerTitleText: {
+      ...typography.h3,
+      color: colors.primary[900],
+      fontWeight: '700',
+      marginBottom: spacing[2],
+    }
+  },
   // Component-specific styles
   components: {
     // Input field styles
@@ -35,7 +49,16 @@ export const theme = {
         borderColor: colors.error,
       },
     },
-    
+
+    //Header styles
+    header: {
+      height: 60,
+      width: '100%',
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: spacing[4],
+    },
     // Button styles
     button: {
       primary: {
@@ -53,7 +76,7 @@ export const theme = {
         textTransform: 'none' as const,
       },
     },
-    
+
     // Card/Form container styles
     card: {
       glassmorphism: {
@@ -65,7 +88,7 @@ export const theme = {
         ...shadows.glassmorphism,
       },
     },
-    
+
     // Checkbox styles
     checkbox: {
       container: {

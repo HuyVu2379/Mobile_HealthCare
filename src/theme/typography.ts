@@ -67,7 +67,7 @@ export const typography: Record<string, TextStyle> = {
     fontSize: fontSize.base,
     lineHeight: fontSize.base * lineHeight.normal,
   },
-  
+
   // Body text
   body1: {
     fontFamily: fontFamily.montserrat.regular,
@@ -79,7 +79,7 @@ export const typography: Record<string, TextStyle> = {
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * lineHeight.normal,
   },
-  
+
   // Special text styles
   subtitle1: {
     fontFamily: fontFamily.montserrat.medium,
@@ -91,7 +91,7 @@ export const typography: Record<string, TextStyle> = {
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * lineHeight.normal,
   },
-  
+
   // Button text
   button: {
     fontFamily: fontFamily.montserrat.semiBold,
@@ -99,7 +99,7 @@ export const typography: Record<string, TextStyle> = {
     lineHeight: fontSize.base * lineHeight.tight,
     textTransform: 'uppercase' as const,
   },
-  
+
   // Caption and overline
   caption: {
     fontFamily: fontFamily.montserrat.regular,

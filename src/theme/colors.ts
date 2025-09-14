@@ -12,7 +12,7 @@ export const colors = {
     800: '#1565C0',
     900: '#0D47A1',
   },
-  
+
   // Secondary blue-teal tones
   secondary: {
     50: '#E0F2F1',
@@ -26,11 +26,11 @@ export const colors = {
     800: '#00695C',
     900: '#004D40',
   },
-  
+
   // Neutral colors
   white: '#FFFFFF',
   black: '#000000',
-  
+
   // Gray scale
   gray: {
     50: '#FAFAFA',
@@ -44,20 +44,20 @@ export const colors = {
     800: '#424242',
     900: '#212121',
   },
-  
+
   // Status colors
   success: '#4CAF50',
   warning: '#FF9800',
   error: '#F44336',
   info: '#2196F3',
-  
+
   // Glassmorphism specific colors
   glassmorphism: {
     background: 'rgba(255, 255, 255, 0.1)',
     border: 'rgba(255, 255, 255, 0.2)',
     shadow: 'rgba(33, 150, 243, 0.1)',
   },
-  
+
   // Text colors
   text: {
     primary: '#212121',
