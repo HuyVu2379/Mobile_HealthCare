@@ -116,7 +116,7 @@ const ChatbotScreen = () => {
                 keyboardVerticalOffset={0}
             >
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                    <SafeAreaView style={styles.container}>
+                    <View style={styles.container}>
                         {/* Header - chỉ hiển thị khi chưa có tin nhắn */}
                         {showWelcome && (
                             <View style={styles.header}>
@@ -167,7 +167,7 @@ const ChatbotScreen = () => {
                                 placeholder="Nhập tin nhắn..."
                             />
                         </View>
-                    </SafeAreaView>
+                    </View>
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
         </ImageBackground>
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     suggestionsSection: {
-        paddingVertical: 12,
+        paddingVertical: 5,
     },
     inputSection: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',

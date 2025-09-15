@@ -10,7 +10,7 @@ import { StatusBar, StyleSheet, View, ImageBackground } from 'react-native';
 import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
-import { RegisterScreen, LoginScreen, LandingScreen, ChatbotScreen } from './src/screens';
+import { RegisterScreen, LoginScreen, LandingScreen, ChatbotScreen, HealthFormScreen } from './src/screens';
 
 function App() {
   const handleLoginPress = () => {
@@ -33,7 +33,7 @@ function App() {
       <View style={styles.container}>
         {/* Background placeholder - user will replace with their image */}
         <View style={styles.backgroundPlaceholder}>
-          <ChatbotScreen />
+          <HealthFormScreen />
         </View>
       </View>
     </SafeAreaProvider>
