@@ -6,9 +6,9 @@ import {
     StyleSheet,
     TextInputProps,
 } from 'react-native';
-import { colors } from '../../theme/colors';
-import { spacing, borderRadius } from '../../theme/spacing';
-import { fontSize, fontFamily } from '../../theme/typography';
+import { colors } from '../../../theme/colors';
+import { spacing, borderRadius } from '../../../theme/spacing';
+import { fontSize, fontFamily } from '../../../theme/typography';
 
 interface InputFieldProps extends Omit<TextInputProps, 'style'> {
     label: string;

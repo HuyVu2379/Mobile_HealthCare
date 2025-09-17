@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import ROUTING from "../constants/routing";
 import { RootStackParamList } from "./type";
-import { LandingScreen, LoginScreen, RegisterScreen, ChatbotScreen } from "../screens";
+import { LandingScreen, LoginScreen, RegisterScreen, ChatbotScreen, HealthFormScreen, AppointmentHistoryScreen } from "../screens";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function NavigationApp() {
@@ -18,7 +18,11 @@ function NavigationApp() {
                 <Stack.Screen name={ROUTING.LOGIN} component={LoginScreen} options={{ headerShown: false }} />
                 <Stack.Screen name={ROUTING.REGISTER} component={RegisterScreen} options={{ headerShown: false }} />
                 <Stack.Screen name={ROUTING.CHATBOT} component={ChatbotScreen} options={{ headerShown: false }} />
+                <Stack.Screen name={ROUTING.PREDICT} component={HealthFormScreen} options={{ headerShown: false }} />
+                <Stack.Screen name={ROUTING.APPOINTMENT} component={AppointmentHistoryScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
         </NavigationContainer>
     )
 }
+
+export default NavigationApp;

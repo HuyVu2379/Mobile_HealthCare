@@ -1,4 +1,4 @@
-import { DropdownOption } from '../components/HealthForm';
+import { DropdownOption } from '../components/ui/HealthForm';
 
 export const PHYSICAL_ACTIVITY_OPTIONS: DropdownOption[] = [
     { label: 'Hàng ngày', value: 'daily' },

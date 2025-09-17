@@ -4,7 +4,7 @@ import {
     Text,
     StyleSheet,
 } from 'react-native';
-import { Message } from '../types/chat';
+import { Message } from '../../../types';
 
 interface MessageItemProps {
     message: Message;

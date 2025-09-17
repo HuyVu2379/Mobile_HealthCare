@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
-import { spacing, borderRadius } from '../../theme/spacing';
-import { fontSize, fontFamily } from '../../theme/typography';
+import { colors } from '../../../theme/colors';
+import { spacing, borderRadius } from '../../../theme/spacing';
+import { fontSize, fontFamily } from '../../../theme/typography';
 
 interface SectionProps {
     title: string;
@@ -18,8 +18,8 @@ export const Section: React.FC<SectionProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                {icon && <Text style={styles.icon}>{icon}</Text>}
-                <Text style={styles.title}>{title}</Text>
+                {icon && <Text style={styles.icon}>{String(icon)}</Text>}
+                <Text style={styles.title}>{String(title)}</Text>
             </View>
             <View style={styles.content}>
                 {children}

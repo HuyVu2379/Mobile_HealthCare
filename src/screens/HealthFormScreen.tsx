@@ -3,11 +3,10 @@ import {
     ScrollView,
     View,
     Text,
-    TouchableOpacity,
     StyleSheet,
     Alert,
 } from 'react-native';
-import { InputField, DropdownSelect, Section, Button } from '../components/HealthForm';
+import { InputField, DropdownSelect, Section, Button } from '../components/ui/HealthForm';
 import { HealthFormData, initialHealthFormData } from '../types/healthForm';
 import {
     PHYSICAL_ACTIVITY_OPTIONS,

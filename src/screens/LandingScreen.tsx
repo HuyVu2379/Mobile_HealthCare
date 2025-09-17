@@ -3,12 +3,11 @@ import { ImageBackground, StyleSheet, View, Text } from 'react-native'
 import Header from '../components/shared/Header';
 import { theme } from "../theme"
 import { FunctionGrid } from '../components/ui/Landing';
-
 const LandingScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <ImageBackground source={require('../assets/header-banner.jpg')} style={styles.background}>
-                <View style={styles.overlay} /> {/* Lớp phủ làm mờ */}
+                <View style={styles.overlay} />
                 <Header />
                 <View style={styles.bannerTitle}>
                     <Text style={styles.bannerTitleText}>Hệ thống chăm sóc sức khỏe</Text>
@@ -18,7 +17,6 @@ const LandingScreen: React.FC = () => {
             <View style={styles.content}>
                 <Text style={styles.contentTitle}>Quản lý sức khỏe của bạn</Text>
                 <Text style={styles.contentSubtitle}>Khám phá các dịch vụ được cá nhân hóa theo nhu cầu của bạn</Text>
-                {/* Grid Layout với FlatList */}
                 <FunctionGrid />
             </View>
         </View>

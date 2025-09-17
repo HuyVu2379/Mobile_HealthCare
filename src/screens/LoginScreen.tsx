@@ -15,28 +15,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { Lucide } from '@react-native-vector-icons/lucide';
-
-interface LoginScreenProps {
-    onLoginPress?: () => void;
-    onRegisterPress?: (email: string, password: string, agreedToTerms: boolean) => void;
-}
-
-const LoginScreen: React.FC<LoginScreenProps> = ({
-    onLoginPress,
-    onRegisterPress,
-}) => {
+import useAuth from '../hooks/useAuth';
+import { LoginRequest } from '../types/IUser';
+import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import ROUTING from '../constants/routing';
+const LoginScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const { handleLogin, getCurrentUser } = useAuth();
 
-    const handleLogin = () => {
-        if (onLoginPress) {
-            onLoginPress();
-        }
-    };
+    const navigation = useNavigation<NavigationProp<ParamListBase>>();
 
     const isFormValid = email.trim().length > 0 && password.length > 0;
 
@@ -104,7 +96,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                                     autoCapitalize="none"
                                     autoCorrect={false}
                                 />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: [{ translateY: -7 }] }}>
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    style={styles.passwordToggle}
+                                >
                                     <Lucide name={showPassword ? "eye-closed" : "eye"} size={20} />
                                 </TouchableOpacity>
                             </View>
@@ -134,7 +129,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                                     styles.loginButton,
                                     !isFormValid && styles.loginButtonDisabled,
                                 ]}
-                                onPress={handleLogin}
+                                onPress={() => handleLogin({ email, password } as LoginRequest)}
                                 disabled={!isFormValid}
                                 activeOpacity={0.8}>
                                 <Text style={styles.loginButtonText}>Đăng nhập</Text>
@@ -152,7 +147,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
                             {/* Register Link */}
                             <View style={styles.registerLinkContainer}>
-                                <TouchableOpacity onPress={() => onRegisterPress && onRegisterPress('', '', false)} activeOpacity={0.7}>
+                                <TouchableOpacity onPress={() => navigation.navigate(ROUTING.REGISTER)} activeOpacity={0.7}>
                                     <Text style={styles.registerLinkText}>Chưa có tài khoản?</Text>
                                 </TouchableOpacity>
                             </View>
@@ -214,6 +209,12 @@ const styles = StyleSheet.create({
     },
     inputFocused: {
         ...theme.components.input.focused,
+    },
+    passwordToggle: {
+        position: 'absolute',
+        right: 10,
+        top: '50%',
+        transform: [{ translateY: -7 }],
     },
 
     forgotPasswordContainer: {

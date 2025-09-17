@@ -4,39 +4,28 @@
  *
  * @format
  */
-
 import React from 'react';
-import { StatusBar, StyleSheet, View, ImageBackground } from 'react-native';
-import {
-  SafeAreaProvider,
-} from 'react-native-safe-area-context';
-import { RegisterScreen, LoginScreen, LandingScreen, ChatbotScreen, HealthFormScreen } from './src/screens';
-
+import { StatusBar, StyleSheet, View } from 'react-native';
+import { Provider } from 'react-redux';
+import { store } from './src/store/store';
+import { enableScreens } from 'react-native-screens';
+import NavigationApp from './src/navigations';
+import Toast from 'react-native-toast-message';
+import { LogBox } from 'react-native';
+LogBox.ignoreAllLogs(false);
+enableScreens();
 function App() {
-  const handleLoginPress = () => {
-    console.log('Navigate to login screen');
-    // TODO: Navigate to login screen
-  };
-
-  const handleRegisterPress = (
-    email: string,
-    password: string,
-    agreedToTerms: boolean,
-  ) => {
-    console.log('Register:', { email, password, agreedToTerms });
-    // TODO: Handle registration logic
-  };
-
   return (
-    <SafeAreaProvider>
+    <Provider store={store}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={styles.container}>
         {/* Background placeholder - user will replace with their image */}
         <View style={styles.backgroundPlaceholder}>
-          <HealthFormScreen />
+          <NavigationApp />
+          <Toast />
         </View>
       </View>
-    </SafeAreaProvider>
+    </Provider>
   );
 }
 

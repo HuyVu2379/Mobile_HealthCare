@@ -104,7 +104,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: [{ translateY: -7 }] }}>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.passwordToggle}
+                >
                   <Lucide name={showPassword ? "eye-closed" : "eye"} size={20} />
                 </TouchableOpacity>
               </View>
@@ -198,6 +201,12 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     ...theme.components.input.focused,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 10,
+    top: '50%',
+    transform: [{ translateY: -7 }],
   },
 
   // Checkbox styles

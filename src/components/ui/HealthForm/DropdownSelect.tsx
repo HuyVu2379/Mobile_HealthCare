@@ -7,9 +7,9 @@ import {
     FlatList,
     StyleSheet,
 } from 'react-native';
-import { colors } from '../../theme/colors';
-import { spacing, borderRadius } from '../../theme/spacing';
-import { fontSize, fontFamily } from '../../theme/typography';
+import { colors } from '../../../theme/colors';
+import { spacing, borderRadius } from '../../../theme/spacing';
+import { fontSize, fontFamily } from '../../../theme/typography';
 
 export interface DropdownOption {
     label: string;
