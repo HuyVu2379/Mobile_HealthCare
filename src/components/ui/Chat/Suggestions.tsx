@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -6,7 +6,7 @@ import {
     TouchableOpacity,
     StyleSheet,
 } from 'react-native';
-import { SuggestionItem } from '../types/chat';
+import { SuggestionItem } from '../../../types/chat';
 
 interface SuggestionsProps {
     suggestions?: SuggestionItem[];
@@ -22,16 +22,20 @@ const defaultSuggestions: SuggestionItem[] = [
     { id: '5', text: 'Chế độ ăn cho người tiểu đường' },
 ];
 
-const Suggestions: React.FC<SuggestionsProps> = ({
+const Suggestions: React.FC<SuggestionsProps> = React.memo(({
     suggestions = defaultSuggestions,
     onSuggestionPress,
     onScrollBegin
 }) => {
-    const handlePress = (suggestion: SuggestionItem) => {
+    // Memoized handle press function
+    const handlePress = useCallback((suggestion: SuggestionItem) => {
         if (onSuggestionPress) {
             onSuggestionPress(suggestion);
         }
-    };
+    }, [onSuggestionPress]);
+
+    // Memoized suggestions array
+    const displaySuggestions = useMemo(() => suggestions, [suggestions]);
 
     return (
         <View style={styles.container}>
@@ -41,7 +45,7 @@ const Suggestions: React.FC<SuggestionsProps> = ({
                 contentContainerStyle={styles.scrollContent}
                 onScrollBeginDrag={onScrollBegin}
             >
-                {suggestions.map((suggestion) => (
+                {displaySuggestions.map((suggestion) => (
                     <TouchableOpacity
                         key={suggestion.id}
                         style={styles.chip}
@@ -54,7 +58,7 @@ const Suggestions: React.FC<SuggestionsProps> = ({
             </ScrollView>
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {
@@ -87,5 +91,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
 });
+
+Suggestions.displayName = 'Suggestions';
 
 export default Suggestions;

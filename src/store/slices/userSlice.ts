@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store";
 import { User, Doctor, Patient, Allergy, Insurance } from "../../models/User";
-import { TokenService } from "../../services/tokenService";
+import { TokenService } from "../../services/token.service";
 const initialState: { user: User | null, accessToken: string | null, refreshToken: string | null } = {
     user: null,
     accessToken: null,

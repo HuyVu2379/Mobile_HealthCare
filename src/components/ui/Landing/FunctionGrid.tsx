@@ -44,10 +44,10 @@ const gridData = [
     },
     {
         id: 6,
-        routing: 'FOLLOW',
-        imageUrl: 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?w=400',
-        subtitle: 'Nhắc nhở, theo dõi',
-        title: 'Báo cáo tình trạng kịp thời'
+        routing: ROUTING.SOCKET_TEST,
+        imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400',
+        subtitle: 'Socket Test',
+        title: 'Kiểm tra kết nối Socket'
     }
 ];
 

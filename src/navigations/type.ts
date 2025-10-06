@@ -8,4 +8,5 @@ export type RootStackParamList = {
     [ROUTING.CHATBOT]: undefined;
     [ROUTING.APPOINTMENT]: undefined;
     [ROUTING.PREDICT]: undefined;
+    [ROUTING.SOCKET_TEST]: undefined;
 };

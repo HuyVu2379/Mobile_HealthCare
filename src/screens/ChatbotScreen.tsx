@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     StyleSheet,
@@ -6,153 +6,265 @@ import {
     ImageBackground,
     SafeAreaView,
     StatusBar,
-    FlatList,
     KeyboardAvoidingView,
     Platform,
     Keyboard,
     TouchableWithoutFeedback,
+    TouchableOpacity,
+    Animated,
+    FlatList,
+    ActivityIndicator,
 } from 'react-native';
-import { Suggestions, ChatInput, MessageItem } from '../components';
-import { Message, SuggestionItem } from '../types/chat';
+import { useSelector } from 'react-redux';
+import { Suggestions, ChatInput, ChatSidebar, MessageItem } from '../components';
+import { SuggestionItem } from '../types/chat';
+import { RootState } from '../store/store';
+import { useChat } from '../hooks/useChat';
+import { useWebSocketContext } from '../contexts/WebSocketContext';
+// Memoized ChatbotScreen component for better performance
+const ChatbotScreen = React.memo(() => {
+    const { user } = useSelector((state: RootState) => state.user);
+    const { isConnected: connected } = useWebSocketContext();
+    const { createAIGroupIfNeeded, currentGroupAIId, currentGroupId, messages, initializeAIGroup, sendMessage, askAIQuestion, error, groups } = useChat(user?.userId || "");
 
-const ChatbotScreen = () => {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [isTyping, setIsTyping] = useState(false);
+    // States
+    const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+    const [isAIResponding, setIsAIResponding] = useState<boolean>(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Refs
+    const slideAnim = useRef(new Animated.Value(-280)).current;
+    const lastSendRef = useRef<{ text: string; ts: number } | null>(null);
     const flatListRef = useRef<FlatList>(null);
 
-    // Danh sách câu trả lời mẫu của bot
-    const botResponses = [
-        "Cảm ơn bạn đã đặt câu hỏi! Tôi sẽ giúp bạn tìm hiểu về vấn đề sức khỏe này.",
-        "Để có lời khuyên chính xác nhất, bạn nên tham khảo ý kiến bác sĩ chuyên khoa.",
-        "Theo nghiên cứu y khoa, việc duy trì chế độ ăn uống cân bằng rất quan trọng.",
-        "Tôi khuyên bạn nên tập thể dục đều đặn và uống đủ nước mỗi ngày.",
-        "Có vẻ như bạn quan tâm đến sức khỏe. Điều đó thật tuyệt vời!",
-        "Bạn có thể chia sẻ thêm chi tiết để tôi hỗ trợ bạn tốt hơn không?",
-    ];
-
-    // Tự động cuộn xuống tin nhắn mới nhất - với check an toàn
-    const scrollToBottom = () => {
-        if (messages.length > 0) {
-            setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-        }
-    };
-
-    const handleSuggestionPress = (suggestion: SuggestionItem) => {
-        sendUserMessage(suggestion.text);
-    };
-
-    const sendUserMessage = (text: string) => {
-        // Tắt keyboard khi gửi tin nhắn
-        Keyboard.dismiss();
-
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            text,
-            sender: 'user',
-            timestamp: new Date(),
-        };
-
-        setMessages(prev => [...prev, userMessage]);
-        scrollToBottom();
-
-        // Giả lập bot typing và trả lời sau 1-2 giây
-        setIsTyping(true);
-        setTimeout(() => {
-            const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-            const botMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: randomResponse,
-                sender: 'bot',
-                timestamp: new Date(),
-            };
-
-            setMessages(prev => [...prev, botMessage]);
-            setIsTyping(false);
-            scrollToBottom();
-        }, Math.random() * 1000 + 1000); // 1-2 giây
-    };
-
-    const handleSendMessage = (message: string) => {
-        sendUserMessage(message);
-    };
-
-    const dismissKeyboard = () => {
-        Keyboard.dismiss();
-    };
-
-    const renderMessage = ({ item }: { item: Message }) => (
-        <MessageItem message={item} />
+    // Memoized values
+    const currentGroup = useMemo(() =>
+        groups.find(group => group.groupId === (currentGroupAIId || currentGroupId)),
+        [groups, currentGroupAIId, currentGroupId]
     );
 
-    const renderTypingIndicator = () => {
-        if (!isTyping) return null;
+    const currentGroupName = useMemo(() =>
+        currentGroup?.groupName || "Trợ lý AI",
+        [currentGroup]
+    );
 
-        return (
-            <View style={styles.typingContainer}>
-                <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>🤖</Text>
-                </View>
-                <View style={styles.typingBubble}>
-                    <Text style={styles.typingText}>Đang nhập...</Text>
-                </View>
-            </View>
-        );
-    };
+    // Memoized messages với performance optimization
+    const memoizedMessages = useMemo(() => {
+        const validMessages = messages.filter(msg => msg && (msg.messageId || msg.tempMessageId));
+        return validMessages.slice().reverse(); // Reverse để sử dụng với FlatList inverted
+    }, [messages]);
 
-    const showWelcome = messages.length === 0;
+    // Initialize AI group from storage when component mounts
+    useEffect(() => {
+        const initializeOnMount = async () => {
+            console.log('🔄 Initializing AI group from storage on component mount');
+            await initializeAIGroup();
+            setIsInitialized(true);
+        };
+
+        initializeOnMount();
+    }, [initializeAIGroup]);
+
+    // Initialize AI group when user is available, WebSocket is connected, and initialization is complete
+    useEffect(() => {
+        if (user && connected && isInitialized && !currentGroupAIId) {
+            console.log('🤖 No existing AI group found, creating new one for user:', user.userId);
+            createAIGroupIfNeeded(user.userId, user.fullName || user.userId);
+        }
+    }, [user, connected, isInitialized, currentGroupAIId, createAIGroupIfNeeded]);
+
+    // Messages are now automatically fetched by useChat hook when group is joined
+
+    useEffect(() => {
+        Animated.timing(slideAnim, {
+            toValue: isDrawerOpen ? 0 : -280,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    }, [isDrawerOpen, slideAnim]);
+
+    const handleSendMessage = useCallback(async (text: string) => {
+        const trimmed = text.trim();
+        if (!trimmed || !user || !currentGroupAIId || isAIResponding) return;
+
+        const now = Date.now();
+        if (lastSendRef.current && lastSendRef.current.text === trimmed && (now - lastSendRef.current.ts) < 1000) {
+            console.warn('⚠️ Duplicate message blocked:', trimmed);
+            return; // ⛔ chặn gọi đôi trong ~1s
+        }
+        lastSendRef.current = { text: trimmed, ts: now };
+
+        // Tạo unique tempMessageId cho user message
+        const userTempId = `user_${now}_${Math.random().toString(36).substring(2, 8)}`;
+
+        // 1) Gửi message của user
+        sendMessage({
+            groupId: currentGroupAIId,
+            content: trimmed,
+            senderId: user.userId || '',
+            messageType: 'TEXT',
+            tempMessageId: userTempId,
+        });
+
+        // 2) Lấy trả lời AI rồi gửi 1 lần
+        setIsAIResponding(true);
+        try {
+            const response = await askAIQuestion({
+                group_id: currentGroupAIId,
+                message: trimmed,
+                user_id: user?.userId || '',
+            });
+
+            // Tạo unique tempMessageId cho AI response
+            const aiTempId = `ai_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+            if (response.response) {
+                sendMessage({
+                    groupId: currentGroupAIId,
+                    content: response.response,
+                    senderId: 'AI',
+                    messageType: 'TEXT',
+                    tempMessageId: aiTempId,
+                });
+            }
+        } catch (error) {
+            console.error('Error getting AI response:', error);
+        } finally {
+            setIsAIResponding(false);
+        }
+
+        Keyboard.dismiss();
+    }, [user, currentGroupAIId, sendMessage, askAIQuestion, isAIResponding]);
+
+    // Optimized render function with React.memo for better performance
+    const renderMessage = useCallback(({ item, index }: { item: any, index: number }) => {
+        if (!item || (!item.messageId && !item.tempMessageId)) {
+            return null;
+        }
+        return <MessageItem message={item} />;
+    }, []);
+
+    // Optimized keyExtractor
+    const getItemKey = useCallback((item: any, index: number) => {
+        const messageId = item.messageId || item.tempMessageId;
+        const timestamp = item.sendAt || item.createdAt || Date.now();
+        return messageId ? `msg_${messageId}` : `temp_${timestamp}_${index}`;
+    }, []);
+
+    // Optimized getItemLayout for better scroll performance
+    const getItemLayout = useCallback((data: any, index: number) => ({
+        length: 80, // Estimated item height
+        offset: 80 * index,
+        index,
+    }), []);
+
+
+    const handleSuggestionPress = useCallback((suggestion: SuggestionItem) => {
+        handleSendMessage(suggestion.text);
+    }, [handleSendMessage]);
+
+    const toggleDrawer = useCallback(() => {
+        setIsDrawerOpen(prev => !prev);
+    }, []);
+
+    const closeDrawer = useCallback(() => {
+        setIsDrawerOpen(false);
+    }, []);
+
+    const dismissKeyboard = useCallback(() => {
+        Keyboard.dismiss();
+    }, []);
 
     return (
-        <ImageBackground
-            source={require('../assets/chatbotbackground.jpg')}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-        >
-            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-            <KeyboardAvoidingView
-                style={styles.keyboardAvoid}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={0}
+        <View style={styles.mainContainer}>
+            <ImageBackground
+                source={require('../assets/chatbotbackground.jpg')}
+                style={styles.backgroundImage}
+                resizeMode="cover"
             >
-                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+                <KeyboardAvoidingView
+                    style={styles.keyboardAvoid}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={0}
+                >
                     <View style={styles.container}>
-                        {/* Header - chỉ hiển thị khi chưa có tin nhắn */}
-                        {showWelcome && (
-                            <View style={styles.header}>
-                                <Text style={styles.title}>Trợ lý AI</Text>
-                                <Text style={styles.subtitle}>
-                                    Chào mừng bạn đến với trợ lý ảo sức khỏe của bạn
-                                </Text>
-                            </View>
+                        {/* Menu Button - Only show when sidebar is closed */}
+                        {!isDrawerOpen && (
+                            <TouchableOpacity
+                                style={styles.menuButton}
+                                onPress={toggleDrawer}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.menuIcon}>
+                                    <View style={styles.menuLine} />
+                                    <View style={styles.menuLine} />
+                                    <View style={styles.menuLine} />
+                                </View>
+                            </TouchableOpacity>
                         )}
 
-                        {/* Danh sách tin nhắn */}
-                        <View style={styles.messagesContainer}>
-                            {showWelcome ? (
-                                // Hiển thị welcome content khi chưa có tin nhắn
-                                <View style={styles.welcomeContent}>
-                                    {/* Phần này để trống hoặc hiển thị nội dung khác */}
+                        {/* Header - Only show when there are no messages */}
+                        {memoizedMessages.length === 0 && (
+                            <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                                <View style={styles.header}>
+                                    {user ? (
+                                        <>
+                                            <Text style={styles.title}>Trợ lý AI</Text>
+                                            <Text style={styles.subtitle}>
+                                                Chào mừng bạn đến với trợ lý ảo sức khỏe của bạn
+                                            </Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Text style={styles.title}>Trợ lý AI</Text>
+                                            <Text style={styles.subtitle}>
+                                                Vui lòng đăng nhập để sử dụng tính năng này
+                                            </Text>
+                                        </>
+                                    )}
                                 </View>
+                            </TouchableWithoutFeedback>
+                        )}
+
+                        {/* Messages Container */}
+                        <View style={[
+                            styles.messagesContainer,
+                            memoizedMessages.length > 0 && styles.messagesContainerWithMessages
+                        ]}>
+                            {memoizedMessages.length > 0 ? (
+                                <FlatList
+                                    ref={flatListRef}
+                                    data={memoizedMessages}
+                                    keyExtractor={getItemKey}
+                                    renderItem={renderMessage}
+                                    showsVerticalScrollIndicator={false}
+                                    contentContainerStyle={styles.messagesList}
+                                    style={styles.flatListStyle}
+                                    removeClippedSubviews={true}
+                                    maxToRenderPerBatch={8}
+                                    windowSize={6}
+                                    initialNumToRender={10}
+                                    updateCellsBatchingPeriod={50}
+                                    scrollEventThrottle={16}
+                                    keyboardShouldPersistTaps="handled"
+                                    onScrollBeginDrag={dismissKeyboard}
+                                    getItemLayout={getItemLayout}
+                                    disableVirtualization={false}
+                                    legacyImplementation={false}
+                                />
                             ) : (
-                                // Hiển thị danh sách tin nhắn
-                                <>
-                                    <FlatList
-                                        ref={flatListRef}
-                                        data={messages}
-                                        renderItem={renderMessage}
-                                        keyExtractor={item => item.id}
-                                        style={styles.messagesList}
-                                        contentContainerStyle={styles.messagesContent}
-                                        showsVerticalScrollIndicator={false}
-                                        onScrollBeginDrag={dismissKeyboard}
-                                    />
-                                    {renderTypingIndicator()}
-                                </>
+                                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                                    <View style={styles.welcomeContent}>
+                                        <Text style={styles.welcomeText}>
+                                            Chào mừng bạn đến với trợ lý AI! Hãy bắt đầu cuộc trò chuyện.
+                                        </Text>
+                                    </View>
+                                </TouchableWithoutFeedback>
                             )}
                         </View>
 
-                        {/* Phần gợi ý - luôn hiển thị gần input */}
+                        {/* Suggestions */}
                         <View style={styles.suggestionsSection}>
                             <Suggestions
                                 onSuggestionPress={handleSuggestionPress}
@@ -160,21 +272,62 @@ const ChatbotScreen = () => {
                             />
                         </View>
 
-                        {/* Thanh nhập tin nhắn */}
+                        {/* AI Loading Indicator */}
+                        {isAIResponding && (
+                            <View style={styles.loadingMessageContainer}>
+                                <View style={styles.loadingMessageContent}>
+                                    <View style={styles.loadingAvatar}>
+                                        <Text style={styles.loadingAvatarText}>AI</Text>
+                                    </View>
+                                    <View style={styles.loadingBubble}>
+                                        <ActivityIndicator size="small" color="#007AFF" />
+                                        <Text style={styles.loadingText}>Đang suy nghĩ...</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Chat Input */}
                         <View style={styles.inputSection}>
                             <ChatInput
                                 onSendMessage={handleSendMessage}
-                                placeholder="Nhập tin nhắn..."
+                                placeholder={isAIResponding ? "Đang chờ AI trả lời..." : "Nhập tin nhắn..."}
+                                currentGroupId={currentGroupAIId || ''}
                             />
                         </View>
                     </View>
+                </KeyboardAvoidingView>
+            </ImageBackground>
+
+            {/* Sidebar Overlay */}
+            {isDrawerOpen && (
+                <TouchableWithoutFeedback onPress={closeDrawer}>
+                    <View style={styles.overlay}>
+                        <TouchableWithoutFeedback>
+                            <Animated.View
+                                style={[
+                                    styles.sidebarContainer,
+                                    {
+                                        transform: [{ translateX: slideAnim }]
+                                    }
+                                ]}
+                            >
+                                <SafeAreaView style={styles.sidebarContent}>
+                                    <ChatSidebar onClose={closeDrawer} />
+                                </SafeAreaView>
+                            </Animated.View>
+                        </TouchableWithoutFeedback>
+                    </View>
                 </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-        </ImageBackground>
+            )}
+        </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
+    mainContainer: {
+        flex: 1,
+    },
     backgroundImage: {
         flex: 1,
         width: '100%',
@@ -216,48 +369,36 @@ const styles = StyleSheet.create({
     },
     messagesContainer: {
         flex: 1,
+        minHeight: 0, // Quan trọng để FlatList có thể scroll
+    },
+    messagesContainerWithMessages: {
+        paddingTop: 60, // Thêm padding top khi có messages để tránh menu button
     },
     welcomeContent: {
         flex: 1,
-        justifyContent: 'flex-start',
-        paddingTop: 20,
-    },
-    messagesList: {
-        flex: 1,
-    },
-    messagesContent: {
-        paddingVertical: 8,
-    },
-    typingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-    },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#f0f0f0',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 8,
+        paddingHorizontal: 20,
     },
-    avatarText: {
+    welcomeText: {
         fontSize: 16,
+        color: '#fff',
+        textAlign: 'center',
+        opacity: 0.8,
+        lineHeight: 22,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
     },
-    typingBubble: {
-        backgroundColor: '#f0f0f0',
+    messagesList: {
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 20,
-        borderBottomLeftRadius: 4,
+        paddingVertical: 10,
+        flexGrow: 1,
     },
-    typingText: {
-        color: '#666',
-        fontSize: 14,
-        fontStyle: 'italic',
+    flatListStyle: {
+        flex: 1,
     },
+
     suggestionsSection: {
         paddingVertical: 5,
     },
@@ -267,6 +408,129 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         paddingTop: 8,
     },
+    menuButton: {
+        position: 'absolute',
+        top: 20,
+        left: 16,
+        zIndex: 1000,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    menuIcon: {
+        width: 20,
+        height: 16,
+        justifyContent: 'space-between',
+    },
+    menuLine: {
+        width: 20,
+        height: 2,
+        backgroundColor: '#333',
+        borderRadius: 1,
+    },
+    overlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 999,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: 280,
+        backgroundColor: '#2c2c2c',
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 2,
+            height: 0,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    sidebarContent: {
+        flex: 1,
+    },
+    connectionStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+    },
+    connectionDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: 6,
+    },
+    connectionText: {
+        fontSize: 12,
+        color: '#fff',
+        fontWeight: '500',
+        opacity: 0.9,
+    },
+    loadingMessageContainer: {
+        flexDirection: 'row',
+        marginVertical: 4,
+        justifyContent: 'flex-start',
+        paddingHorizontal: 16,
+    },
+    loadingMessageContent: {
+        flexDirection: 'row',
+        maxWidth: '75%',
+    },
+    loadingAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+        marginTop: 4,
+    },
+    loadingAvatarText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#007AFF',
+    },
+    loadingBubble: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 20,
+        borderBottomLeftRadius: 4,
+        backgroundColor: '#f0f0f0',
+        marginTop: 4,
+    },
+    loadingText: {
+        color: '#333333',
+        fontSize: 16,
+        marginLeft: 8,
+        fontStyle: 'italic',
+    },
+
 });
 
 export default ChatbotScreen;

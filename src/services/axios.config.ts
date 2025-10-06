@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { Alert } from 'react-native';
 import store from '../store/store';
-import { TokenService } from './tokenService';
+import { TokenService } from './token.service';
 import { setTokens, clearTokens } from '../store/slices/userSlice';
 const API_URL = 'http://10.0.2.2:8080/api/v1';
 
@@ -98,7 +98,8 @@ axiosConfig.interceptors.response.use(
                 const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
                 // Lưu token mới
-                await TokenService.setTokens(accessToken, newRefreshToken);
+                await TokenService.setAccessToken(accessToken);
+                await TokenService.setRefreshToken(newRefreshToken);
                 store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
 
                 // Cập nhật header cho request gốc

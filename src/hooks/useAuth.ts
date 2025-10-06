@@ -5,30 +5,25 @@ import { setMe, setAccessToken, setRefreshToken, loadTokensFromStorage as loadTo
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import ROUTING from "../constants/routing";
 import Toast from "react-native-toast-message";
-import { useEffect } from "react";
 import { RootState } from "../store/store";
 const useAuth = () => {
     const dispatch = useDispatch();
     const navigation = useNavigation<NavigationProp<ParamListBase>>();
     const { user, accessToken, refreshToken } = useSelector((state: RootState) => state.user);
 
-    // Load tokens từ AsyncStorage khi hook được khởi tạo
-    useEffect(() => {
-        const initializeAuth = async () => {
-            try {
-                await loadTokensFromStorage();
-
-                // Nếu có token, thử lấy thông tin user
-                if (await isAuthenticated()) {
-                    await getCurrentUser();
-                }
-            } catch (error) {
-                console.error('Error initializing auth:', error);
+    const getCurrentUser = async () => {
+        try {
+            const response = await getMe();
+            if (response.statusCode === 200 && response.data) {
+                dispatch(setMe(response.data));
+                return response.data;
             }
-        };
-
-        initializeAuth();
-    }, []);
+            return null;
+        } catch (error) {
+            console.error("Get me failed", error);
+            return null;
+        }
+    }
 
     const handleLogin = async (data: LoginRequest) => {
         try {
@@ -46,6 +41,9 @@ const useAuth = () => {
                 // Lưu token vào redux
                 dispatch(setAccessToken(accessToken));
                 dispatch(setRefreshToken(refreshToken));
+                getCurrentUser();
+
+
                 // Thông báo thành công
                 Toast.show({
                     type: "success",
@@ -77,18 +75,6 @@ const useAuth = () => {
             });
         }
     };
-
-
-    const getCurrentUser = async () => {
-        try {
-            const response = await getMe();
-            if (response.statusCode === 200) {
-                dispatch(setMe(response.data));
-            }
-        } catch (error) {
-            console.error("Get me failed", error);
-        }
-    }
 
     const handleLogout = async () => {
         try {

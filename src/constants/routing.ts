@@ -7,6 +7,7 @@ const ROUTING = {
     CHATBOT: "Chatbot",
     APPOINTMENT: "Appointment",
     PREDICT: "Predict",
+    SOCKET_TEST: "SocketTest",
 }
 
 export default ROUTING;

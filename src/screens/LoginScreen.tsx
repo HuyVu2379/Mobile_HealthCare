@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { Lucide } from '@react-native-vector-icons/lucide';
-import useAuth from '../hooks/useAuth';
+import { useAuthContext } from '../contexts/AuthContext';
 import { LoginRequest } from '../types/IUser';
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import ROUTING from '../constants/routing';
@@ -26,7 +26,7 @@ const LoginScreen = () => {
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { handleLogin, getCurrentUser } = useAuth();
+    const { handleLogin } = useAuthContext();
 
     const navigation = useNavigation<NavigationProp<ParamListBase>>();
 

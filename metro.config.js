@@ -10,6 +10,12 @@ const config = {
     server: {
         port: 8989,
     },
+    resolver: {
+        alias: {
+            'buffer': 'buffer',
+            'text-encoding': 'text-encoding',
+        },
+    },
 };
 
 module.exports = mergeConfig(getDefaultConfig(__dirname), config);

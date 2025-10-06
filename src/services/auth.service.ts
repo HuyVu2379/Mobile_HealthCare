@@ -2,17 +2,17 @@ import axiosConfig from "./axios.config";
 const api_url = '/auth'
 import { LoginRequest } from "../types/IUser";
 import { CustomApiResponse, LoginResponse } from "../types/api";
-import { TokenService } from "./tokenService";
+import { TokenService } from "./token.service";
 import store from "../store/store";
 import { clearTokens, setTokens } from "../store/slices/userSlice";
 export const login = async (data: LoginRequest): Promise<any> => {
     const response = await axiosConfig.post(`${api_url}/login`, data);
     // Nếu login thành công và có token, lưu vào AsyncStorage
-    if (response.data?.accessToken && response.data?.refreshToken) {
-        await TokenService.setTokens(response.data.accessToken, response.data.refreshToken);
+    if (response.data?.accessToken && response.data?.refreshToken && response.data?.userId) {
+        await TokenService.setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
         store.dispatch(setTokens({
             accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken
+            refreshToken: response.data.refreshToken,
         }));
     }
 
@@ -39,10 +39,10 @@ export const refreshToken = async (refreshToken: string): Promise<any> => {
 
         // Lưu token mới nếu thành công
         if (response.data?.accessToken && response.data?.refreshToken) {
-            await TokenService.setTokens(response.data.accessToken, response.data.refreshToken);
+            await TokenService.setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
             store.dispatch(setTokens({
                 accessToken: response.data.accessToken,
-                refreshToken: response.data.refreshToken
+                refreshToken: response.data.refreshToken,
             }));
         }
 

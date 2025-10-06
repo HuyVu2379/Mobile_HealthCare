@@ -4,8 +4,10 @@ import { Lucide } from '@react-native-vector-icons/lucide';
 import { theme } from '../../theme';
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import ROUTING from '../../constants/routing';
+import { useSelector } from 'react-redux';
 const Header: React.FC = () => {
     const navigation = useNavigation<NavigationProp<ParamListBase>>();
+    const { isLoggedIn } = useSelector((state: any) => state.user);
     return (
         <View style={styles.container}>
             <View style={[theme.layout.dflexRow, { gap: 10 }]}>
@@ -13,9 +15,15 @@ const Header: React.FC = () => {
                 <Lucide name="align-justify" size={24} color="blue" />
             </View>
             <View>
-                <TouchableOpacity onPress={() => navigation.navigate(ROUTING.LOGIN)} style={styles.buttonLogin}>
-                    <Text style={styles.buttonLoginText}>Đăng nhập</Text>
-                </TouchableOpacity>
+                {!isLoggedIn ? (
+                    <TouchableOpacity onPress={() => navigation.navigate(ROUTING.LOGIN)} style={styles.buttonLogin}>
+                        <Text style={styles.buttonLoginText}>Đăng nhập</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity onPress={() => navigation.navigate(ROUTING.PROFILE)} style={styles.buttonLogin}>
+                        <Text style={styles.buttonLoginText}>Trang cá nhân</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     )

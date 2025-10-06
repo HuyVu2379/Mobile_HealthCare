@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Keys cho AsyncStorage
 const ACCESS_TOKEN_KEY = '@healthcare_access_token';
 const REFRESH_TOKEN_KEY = '@healthcare_refresh_token';
+const USER_ID_KEY = '@healthcare_user_id';
 
 export class TokenService {
     /**
@@ -16,7 +17,14 @@ export class TokenService {
             throw error;
         }
     }
-
+    static async setUserId(userId: string): Promise<void> {
+        try {
+            await AsyncStorage.setItem(USER_ID_KEY, userId)
+        } catch (error) {
+            console.error('Error saving userId:', error);
+            throw error;
+        }
+    }
     /**
      * Lấy access token từ AsyncStorage
      */
@@ -55,14 +63,24 @@ export class TokenService {
         }
     }
 
+    static async getUserId(): Promise<string | null> {
+        try {
+            const userId = await AsyncStorage.getItem(USER_ID_KEY);
+            return userId;
+        } catch (error) {
+            console.error('Error getting userId:', error);
+            return null;
+        }
+    }
     /**
      * Lưu cả access token và refresh token
      */
-    static async setTokens(accessToken: string, refreshToken: string): Promise<void> {
+    static async setTokens(accessToken: string, refreshToken: string, userId: string): Promise<void> {
         try {
             await Promise.all([
                 AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken),
-                AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+                AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken),
+                AsyncStorage.setItem(USER_ID_KEY, userId)
             ]);
         } catch (error) {
             console.error('Error saving tokens:', error);
