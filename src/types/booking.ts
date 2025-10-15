@@ -1,7 +1,8 @@
+import { TimeSlot } from "./appointment";
+
 export interface Service {
     id: string;
     name: string;
-    price: number;
     description: string;
 }
 
@@ -13,11 +14,11 @@ export interface Doctor {
     rating: number;
 }
 
-export interface TimeSlot {
-    id: string;
-    time: string;
-    available: boolean;
-}
+// export interface TimeSlot {
+//     id: string;
+//     time: string;
+//     available: boolean;
+// }
 
 export interface BookingMethod {
     id: string;
@@ -26,10 +27,10 @@ export interface BookingMethod {
     type: 'in-person' | 'online';
 }
 
-export interface BookingState {
-    service: Service | null;
-    doctor: Doctor | null;
-    date: Date | null;
-    timeSlot: TimeSlot | null;
-    method: BookingMethod | null;
-}
+// export interface BookingState {
+//     service: Service | null;
+//     doctor: Doctor | null;
+//     date: Date | null;
+//     timeSlot: TimeSlot | null;
+//     method: BookingMethod | null;
+// }

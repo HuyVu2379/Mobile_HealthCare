@@ -1,25 +1,58 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { ConsultationType } from '../../../types/appointment';
 
 interface AppointmentIconProps {
-    type: 'in-person' | 'online';
+    type: ConsultationType;
 }
 
 const AppointmentIcon: React.FC<AppointmentIconProps> = ({ type }) => {
+    // Debug: In ra giá trị để kiểm tra
+    console.log('Consultation Type received:', type);
+
     const getIconProps = () => {
-        if (type === 'in-person') {
+        // So sánh với cả enum value và string key từ backend
+        const typeStr = String(type);
+
+        if (typeStr === ConsultationType.DIRECT_CONSULTATION || typeStr === 'DIRECT_CONSULTATION') {
             return {
                 icon: '📍',
                 color: '#4CAF50', // Xanh lá
                 backgroundColor: '#E8F5E8'
             };
-        } else {
+        }
+
+        if (typeStr === ConsultationType.LAB_TEST || typeStr === 'LAB_TEST') {
+            return {
+                icon: '🧪',
+                color: '#FF9800', // Cam
+                backgroundColor: '#FFF3E0'
+            };
+        }
+
+        if (typeStr === ConsultationType.FOLLOW_UP || typeStr === 'FOLLOW_UP') {
+            return {
+                icon: '🔄',
+                color: '#9C27B0', // Tím
+                backgroundColor: '#F3E5F5'
+            };
+        }
+
+        if (typeStr === ConsultationType.ONLINE_CONSULTATION || typeStr === 'ONLINE_CONSULTATION') {
             return {
                 icon: '📹',
                 color: '#2196F3', // Xanh dương
                 backgroundColor: '#E3F2FD'
             };
         }
+
+        // Default case
+        console.log('Using default icon for type:', typeStr);
+        return {
+            icon: '📋',
+            color: '#757575', // Xám
+            backgroundColor: '#F5F5F5'
+        };
     };
 
     const iconProps = getIconProps();

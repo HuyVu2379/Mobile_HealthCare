@@ -19,5 +19,6 @@ export const SOCKET_ACTIONS = {
         MESSAGE_RECEIVED: 'message_received',
         DELETE_GROUP: 'delete_group',
         GROUP_DELETED: 'group_deleted',
-    }
+    },
+    APPOINTMENT: "schedule_appointment"
 };

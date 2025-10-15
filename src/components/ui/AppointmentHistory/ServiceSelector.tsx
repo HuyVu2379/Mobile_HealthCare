@@ -4,7 +4,6 @@ import {
     Text,
     TouchableOpacity,
     StyleSheet,
-    FlatList,
 } from 'react-native';
 import { Service } from '../../../types/booking';
 
@@ -19,20 +18,18 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     selectedService,
     onServiceSelect,
 }) => {
-    const renderServiceItem = ({ item }: { item: Service }) => {
+    const renderServiceItem = (item: Service) => {
         const isSelected = selectedService?.id === item.id;
 
         return (
             <TouchableOpacity
+                key={item.id}
                 style={[styles.serviceCard, isSelected && styles.selectedCard]}
                 onPress={() => onServiceSelect(item)}
             >
                 <View style={styles.serviceHeader}>
                     <Text style={[styles.serviceName, isSelected && styles.selectedText]}>
                         {item.name}
-                    </Text>
-                    <Text style={[styles.servicePrice, isSelected && styles.selectedText]}>
-                        {item.price.toLocaleString('vi-VN')}đ
                     </Text>
                 </View>
                 <Text style={[styles.serviceDescription, isSelected && styles.selectedDescriptionText]}>
@@ -45,13 +42,9 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     return (
         <View style={styles.container}>
             <Text style={styles.sectionTitle}>Chọn dịch vụ</Text>
-            <FlatList
-                data={services}
-                renderItem={renderServiceItem}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.listContainer}
-            />
+            <View style={styles.listContainer}>
+                {services.map((service) => renderServiceItem(service))}
+            </View>
         </View>
     );
 };

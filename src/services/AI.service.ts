@@ -2,7 +2,8 @@ import axiosConfig from "./axios.config";
 const api_url_predict = 'analysis';
 const api_url_chatbot = 'chat';
 import { ChatRequest, ChatResponse } from "../types/IAI";
-export const predictCKD = async (data: FormData) => {
+import { HealthFormApiData, PredictHealthResponse } from "../types";
+export const predictCKD = async (data: HealthFormApiData): Promise<PredictHealthResponse> => {
     return await axiosConfig.post(`${api_url_predict}/ckd-prediction`, data)
 }
 export const askAI = async (data: ChatRequest): Promise<ChatResponse> => {

@@ -8,8 +8,8 @@ export const PHYSICAL_ACTIVITY_OPTIONS: DropdownOption[] = [
 
 export const DIET_OPTIONS: DropdownOption[] = [
     { label: 'Cân bằng', value: 'balanced' },
-    { label: 'Giàu protein', value: 'high_protein' },
-    { label: 'Ít muối', value: 'low_salt' },
+    { label: 'Giàu protein', value: 'high protein' },
+    { label: 'Ít muối', value: 'low salt' },
 ];
 
 export const YES_NO_OPTIONS: DropdownOption[] = [
@@ -36,12 +36,11 @@ export const STRESS_LEVEL_OPTIONS: DropdownOption[] = [
 ];
 
 export const ANA_OPTIONS: DropdownOption[] = [
-    { label: 'Âm tính', value: 'negative' },
-    { label: 'Dương tính', value: 'positive' },
+    { label: 'Âm tính', value: '0' },
+    { label: 'Dương tính', value: '1' },
 ];
 
 export const HEMATURIA_OPTIONS: DropdownOption[] = [
-    { label: 'Không', value: 'no' },
-    { label: 'Vi thể', value: 'microscopic' },
-    { label: 'Đại thể', value: 'gross' },
+    { label: 'Không', value: '0' },
+    { label: 'Có', value: '1' },
 ];

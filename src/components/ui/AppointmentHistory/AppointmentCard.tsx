@@ -3,25 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import AppointmentIcon from './AppointmentIcon';
 import AppointmentStatus from './AppointmentStatus';
 import AppointmentActions from './AppointmentActions';
-
-interface AppointmentData {
-    id: string;
-    type: 'in-person' | 'online';
-    title: string;
-    doctor: string;
-    date: string;
-    time: string;
-    status: 'upcoming' | 'completed' | 'cancelled';
-    statusLabel: string;
-    actions: Array<{
-        type: 'reschedule' | 'cancel' | 'join';
-        label: string;
-        onPress: () => void;
-    }>;
-}
+import { Appointment, AppointmentStatusEnum, ConsultationType } from '../../../types/appointment';
 
 interface AppointmentCardProps {
-    appointment: AppointmentData;
+    appointment: Appointment;
     isFirst: boolean;
     isLast: boolean;
 }
@@ -31,6 +16,41 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
     isFirst,
     isLast
 }) => {
+    // Debug: In ra giá trị để kiểm tra
+    console.log('Appointment data:', {
+        consultationType: appointment.consultationType,
+        status: appointment.status,
+        addressDetail: appointment.addressDetail
+    });
+
+    const actions: Array<{
+        type: 'reschedule' | 'cancel' | 'join';
+        label: string;
+        onPress: () => void;
+    }> = [{
+        type: 'reschedule',
+        label: 'Đổi lịch',
+        onPress: () => console.log('Reschedule Appointment Pressed'),
+    },
+    {
+        type: 'cancel',
+        label: 'Hủy lịch',
+        onPress: () => console.log('Cancel Appointment Pressed'),
+    }];
+
+    // So sánh với cả enum value và string key từ backend
+    const consultationTypeStr = String(appointment.consultationType);
+    const statusStr = String(appointment.status);
+
+    if ((consultationTypeStr === ConsultationType.ONLINE_CONSULTATION || consultationTypeStr === 'ONLINE_CONSULTATION') &&
+        (statusStr === AppointmentStatusEnum.CONFIRMED || statusStr === 'CONFIRMED')) {
+        actions.unshift({
+            type: 'join',
+            label: 'Tham gia cuộc hẹn',
+            onPress: () => console.log('Join Appointment Pressed'),
+        });
+    }
+
     return (
         <View style={styles.container}>
             {/* Timeline */}
@@ -43,27 +63,34 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
             {/* Card Content */}
             <View style={styles.card}>
                 <View style={styles.header}>
-                    <AppointmentIcon type={appointment.type} />
+                    <AppointmentIcon type={appointment.consultationType} />
                     <View style={styles.headerContent}>
-                        <Text style={styles.title}>{appointment.title}</Text>
-                        <Text style={styles.doctor}>{appointment.doctor}</Text>
+                        <Text style={styles.title}>{appointment.note}</Text>
+                        <Text style={styles.doctor}>Bs. {appointment.doctor.fullName}</Text>
                     </View>
                 </View>
 
-                <AppointmentStatus status={appointment.status} label={appointment.statusLabel} />
+                <AppointmentStatus status={appointment.status} />
 
                 <View style={styles.dateTimeContainer}>
                     <View style={styles.dateTime}>
                         <Text style={styles.dateTimeIcon}>📅</Text>
-                        <Text style={styles.dateTimeText}>{appointment.date}</Text>
+                        <Text style={styles.dateTimeText}>{appointment.appointmentDate}</Text>
                     </View>
                     <View style={styles.dateTime}>
                         <Text style={styles.dateTimeIcon}>🕘</Text>
-                        <Text style={styles.dateTimeText}>{appointment.time}</Text>
+                        <Text style={styles.dateTimeText}>{appointment.timeSlot.startTime} - {appointment.timeSlot.endTime}</Text>
                     </View>
                 </View>
 
-                <AppointmentActions actions={appointment.actions} />
+                {(consultationTypeStr === ConsultationType.DIRECT_CONSULTATION || consultationTypeStr === 'DIRECT_CONSULTATION') && appointment.addressDetail && (
+                    <View style={styles.addressContainer}>
+                        <Text style={styles.addressIcon}>📍</Text>
+                        <Text style={styles.addressText}>{appointment.addressDetail}</Text>
+                    </View>
+                )}
+
+                <AppointmentActions actions={actions} />
             </View>
         </View>
     );
@@ -154,6 +181,26 @@ const styles = StyleSheet.create({
     dateTimeText: {
         fontSize: 14,
         color: '#666666',
+    },
+    addressContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+    },
+    addressIcon: {
+        fontSize: 16,
+        marginRight: 8,
+        marginTop: 2,
+    },
+    addressText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#666666',
+        lineHeight: 20,
     },
 });
 

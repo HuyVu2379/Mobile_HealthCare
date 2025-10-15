@@ -4,10 +4,9 @@ import {
     Text,
     TouchableOpacity,
     StyleSheet,
-    FlatList,
 } from 'react-native';
 import DatePicker from 'react-native-date-picker';
-import { TimeSlot } from '../../../types/booking';
+import { TimeSlot } from '../../../types/appointment';
 
 interface DateTimeSelectorProps {
     timeSlots: TimeSlot[];
@@ -34,31 +33,43 @@ const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
         });
     };
 
-    const renderTimeSlot = ({ item }: { item: TimeSlot }) => {
-        const isSelected = selectedTimeSlot?.id === item.id;
-        const isAvailable = item.available;
+    const renderTimeSlot = (item: TimeSlot) => {
+        const isSelected = selectedTimeSlot?.slotId === item.slotId;
 
         return (
             <TouchableOpacity
+                key={String(item.slotId)}
                 style={[
                     styles.timeButton,
                     isSelected && styles.selectedTimeButton,
-                    !isAvailable && styles.disabledTimeButton,
                 ]}
-                onPress={() => isAvailable && onTimeSlotSelect(item)}
-                disabled={!isAvailable}
+                onPress={() => onTimeSlotSelect(item)}
             >
                 <Text
                     style={[
                         styles.timeText,
                         isSelected && styles.selectedTimeText,
-                        !isAvailable && styles.disabledTimeText,
+
                     ]}
                 >
-                    {item.time}
+                    {item.startTime} - {item.endTime}
                 </Text>
             </TouchableOpacity>
         );
+    };
+
+    // Chia timeSlots thành các hàng (2 cột)
+    const renderTimeSlots = () => {
+        const rows = [];
+        for (let i = 0; i < timeSlots.length; i += 2) {
+            rows.push(
+                <View key={`row-${i}`} style={styles.timeRow}>
+                    {renderTimeSlot(timeSlots[i])}
+                    {timeSlots[i + 1] && renderTimeSlot(timeSlots[i + 1])}
+                </View>
+            );
+        }
+        return rows;
     };
 
     return (
@@ -99,14 +110,9 @@ const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
             {selectedDate && (
                 <View style={styles.timeSection}>
                     <Text style={styles.sectionTitle}>Chọn giờ</Text>
-                    <FlatList
-                        data={timeSlots}
-                        renderItem={renderTimeSlot}
-                        keyExtractor={(item) => item.id}
-                        numColumns={2}
-                        columnWrapperStyle={styles.timeRow}
-                        contentContainerStyle={styles.timeContainer}
-                    />
+                    <View style={styles.timeContainer}>
+                        {renderTimeSlots()}
+                    </View>
                 </View>
             )}
         </View>
@@ -157,36 +163,39 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     timeRow: {
+        flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 12,
+        gap: 12,
     },
     timeButton: {
         backgroundColor: '#fff',
-        borderRadius: 8,
-        padding: 12,
+        borderRadius: 12,
+        padding: 16,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        flex: 0.48,
+        flex: 1,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 1,
+            height: 2,
         },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowRadius: 3.84,
+        elevation: 3,
     },
     selectedTimeButton: {
         backgroundColor: '#4285F4',
         borderColor: '#4285F4',
+        borderWidth: 2,
     },
     disabledTimeButton: {
         backgroundColor: '#f5f5f5',
         borderColor: '#e0e0e0',
     },
     timeText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: '#333',
     },

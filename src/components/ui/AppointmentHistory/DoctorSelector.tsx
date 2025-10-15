@@ -4,15 +4,14 @@ import {
     Text,
     TouchableOpacity,
     StyleSheet,
-    FlatList,
     Image,
 } from 'react-native';
-import { Doctor } from '../../../types/booking';
+import { DoctorClientResponse } from '../../../types/appointment';
 
 interface DoctorSelectorProps {
-    doctors: Doctor[];
-    selectedDoctor: Doctor | null;
-    onDoctorSelect: (doctor: Doctor) => void;
+    doctors: DoctorClientResponse[];
+    selectedDoctor: DoctorClientResponse | null;
+    onDoctorSelect: (doctor: DoctorClientResponse) => void;
 }
 
 const DoctorSelector: React.FC<DoctorSelectorProps> = ({
@@ -20,33 +19,32 @@ const DoctorSelector: React.FC<DoctorSelectorProps> = ({
     selectedDoctor,
     onDoctorSelect,
 }) => {
-    const renderDoctorItem = ({ item }: { item: Doctor }) => {
-        const isSelected = selectedDoctor?.id === item.id;
+    const renderDoctorItem = (item: DoctorClientResponse) => {
+        const isSelected = selectedDoctor?.doctorId === item.doctorId;
 
         return (
             <TouchableOpacity
+                key={item.doctorId}
                 style={[styles.doctorCard, isSelected && styles.selectedCard]}
                 onPress={() => onDoctorSelect(item)}
             >
                 <View style={styles.doctorInfo}>
                     <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>
-                            {item.name ? item.name.split(' ').slice(-2).map(part => part.charAt(0)).join('') : 'N/A'}
-                        </Text>
+                        {item.avatarUrl ? (
+                            <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>
+                                {item.fullName.charAt(0).toUpperCase()}
+                            </Text>
+                        )}
                     </View>
                     <View style={styles.doctorDetails}>
                         <Text style={[styles.doctorName, isSelected && styles.selectedText]}>
-                            {item.name}
+                            {item.fullName}
                         </Text>
                         <Text style={[styles.doctorSpecialty, isSelected && styles.selectedSpecialtyText]}>
-                            {item.specialty}
+                            {item.specialty || 'Chưa cập nhật'}
                         </Text>
-                        <View style={styles.ratingContainer}>
-                            <Text style={styles.starIcon}>⭐</Text>
-                            <Text style={[styles.rating, isSelected && styles.selectedText]}>
-                                {item.rating}
-                            </Text>
-                        </View>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -56,13 +54,9 @@ const DoctorSelector: React.FC<DoctorSelectorProps> = ({
     return (
         <View style={styles.container}>
             <Text style={styles.sectionTitle}>Chọn bác sĩ</Text>
-            <FlatList
-                data={doctors}
-                renderItem={renderDoctorItem}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.listContainer}
-            />
+            <View style={styles.listContainer}>
+                {doctors.map((doctor) => renderDoctorItem(doctor))}
+            </View>
         </View>
     );
 };
@@ -112,10 +106,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
     },
     avatarText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 20,
         fontWeight: '600',
     },
     doctorDetails: {

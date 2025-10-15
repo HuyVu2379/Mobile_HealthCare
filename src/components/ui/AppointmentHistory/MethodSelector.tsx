@@ -6,12 +6,13 @@ import {
     StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { BookingMethod } from '../../../types/booking';
+import { ConsultationType } from '../../../types/appointment';
+import { CONSULTATION_TYPE_ICONS } from '../../../constants/bookingData';
 
 interface MethodSelectorProps {
-    methods: BookingMethod[];
-    selectedMethod: BookingMethod | null;
-    onMethodSelect: (method: BookingMethod) => void;
+    methods: ConsultationType[];
+    selectedMethod: ConsultationType | null;
+    onMethodSelect: (method: ConsultationType) => void;
 }
 
 const MethodSelector: React.FC<MethodSelectorProps> = ({
@@ -24,23 +25,27 @@ const MethodSelector: React.FC<MethodSelectorProps> = ({
             <Text style={styles.sectionTitle}>Hình thức khám</Text>
             <View style={styles.methodsContainer}>
                 {methods.map((method) => {
-                    const isSelected = selectedMethod?.id === method.id;
+                    const isSelected = selectedMethod === method;
+                    const iconName = CONSULTATION_TYPE_ICONS[method];
+
+                    // Debug log để kiểm tra
+                    console.log('Method:', method, 'Icon:', iconName);
 
                     return (
                         <TouchableOpacity
-                            key={method.id}
+                            key={method}
                             style={[styles.methodCard, isSelected && styles.selectedCard]}
                             onPress={() => onMethodSelect(method)}
                         >
                             <View style={[styles.iconContainer, isSelected && styles.selectedIconContainer]}>
                                 <Icon
-                                    name={method.icon}
+                                    name={iconName || 'help-circle'}
                                     size={24}
                                     color={isSelected ? '#fff' : '#4285F4'}
                                 />
                             </View>
                             <Text style={[styles.methodName, isSelected && styles.selectedText]}>
-                                {method.name}
+                                {method}
                             </Text>
                         </TouchableOpacity>
                     );

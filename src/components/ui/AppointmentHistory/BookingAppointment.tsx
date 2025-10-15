@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ScrollView,
     StyleSheet,
@@ -10,66 +10,105 @@ import DoctorSelector from './DoctorSelector';
 import DateTimeSelector from './DateTimeSelector';
 import MethodSelector from './MethodSelector';
 import ActionButtons from './ActionButtons';
-
-import { BookingState } from '../../../types/booking';
+import { getTimeSlots } from '../../../services/schedule.service';
 import {
     SERVICES,
     DOCTORS,
     TIME_SLOTS,
-    BOOKING_METHODS,
+    CONSULTATION_TYPES,
 } from '../../../constants/bookingData';
+import { AppointmentStatusEnum, ConsultationType, CreateAppointmentRequest, DoctorClientResponse, TimeSlot } from '../../../types/appointment';
+import useAppointment from '../../../hooks/useAppointment';
 
-const BookingAppointment: React.FC = () => {
-    const [bookingState, setBookingState] = useState<BookingState>({
-        service: null,
-        doctor: null,
-        date: null,
-        timeSlot: null,
-        method: null,
+interface BookingAppointmentProps {
+    handleBooking: (bookingData: CreateAppointmentRequest) => void;
+}
+
+const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }) => {
+    const [bookingState, setBookingState] = useState<CreateAppointmentRequest>({
+        patientId: "",
+        scheduleId: "",
+        doctorId: "",
+        symptoms: "",
+        note: "",
+        slotId: 0,
+        status: AppointmentStatusEnum.PENDING,
+        consultationType: ConsultationType.DIRECT_CONSULTATION,
+        addressDetail: "",
     });
+    const { doctors, loading, error, handleGetDoctorByDateAndTimeSlot } = useAppointment();
+    // State phụ để quản lý UI
+    const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
+    const [selectedDoctor, setSelectedDoctor] = useState<DoctorClientResponse | null>(null);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+    const [selectedMethod, setSelectedMethod] = useState<ConsultationType | null>(null);
+
+    const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+    const handleGetTimeSlots = async () => {
+        try {
+            const response = await getTimeSlots();
+            console.log('Available Time Slots:', response.data);
+            setTimeSlots(response.data);
+        } catch (error) {
+            console.error('Error fetching time slots:', error);
+        }
+    }
+
+    // Chỉ gọi 1 lần khi component mount
+    useEffect(() => {
+        handleGetTimeSlots();
+    }, []); // ✅ Empty dependency array
 
     const handleServiceSelect = (service: typeof SERVICES[0]) => {
+        setSelectedService(service);
         setBookingState(prev => ({
             ...prev,
-            service,
-            doctor: null, // Reset subsequent selections
-            date: null,
-            timeSlot: null,
-            method: null,
+            note: service.name,
         }));
     };
 
-    const handleDoctorSelect = (doctor: typeof DOCTORS[0]) => {
+    const handleDoctorSelect = (doctor: DoctorClientResponse) => {
+        setSelectedDoctor(doctor);
         setBookingState(prev => ({
             ...prev,
-            doctor,
-            date: null, // Reset subsequent selections
-            timeSlot: null,
-            method: null,
+            doctorId: doctor.doctorId || "",
         }));
     };
 
     const handleDateSelect = (date: Date) => {
+        setSelectedDate(date);
+        // Cập nhật scheduleId dựa trên date
         setBookingState(prev => ({
             ...prev,
-            date,
-            timeSlot: null, // Reset time selection when date changes
-            method: null,
+            scheduleId: date.toISOString().split('T')[0], // hoặc logic khác để lấy scheduleId
         }));
     };
 
-    const handleTimeSlotSelect = (timeSlot: typeof TIME_SLOTS[0]) => {
+    const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
+        setSelectedTimeSlot(timeSlot);
         setBookingState(prev => ({
             ...prev,
-            timeSlot,
-            method: null, // Reset method selection
+            slotId: Number(timeSlot.slotId) || 0,
         }));
     };
 
-    const handleMethodSelect = (method: typeof BOOKING_METHODS[0]) => {
+    // Gọi API lấy danh sách bác sĩ khi đã chọn cả ngày và timeSlot
+    useEffect(() => {
+        if (selectedDate && selectedTimeSlot) {
+            const dateString = selectedDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            const timeSlotId = selectedTimeSlot.slotId;
+
+            console.log('Fetching doctors for date:', dateString, 'and timeSlot:', timeSlotId);
+            handleGetDoctorByDateAndTimeSlot(dateString, timeSlotId);
+        }
+    }, [selectedDate, selectedTimeSlot]);
+
+    const handleMethodSelect = (method: ConsultationType) => {
+        setSelectedMethod(method);
         setBookingState(prev => ({
             ...prev,
-            method,
+            consultationType: method as ConsultationType,
         }));
     };
 
@@ -83,13 +122,24 @@ const BookingAppointment: React.FC = () => {
                     text: 'Hủy',
                     style: 'destructive',
                     onPress: () => {
+                        // Reset bookingState
                         setBookingState({
-                            service: null,
-                            doctor: null,
-                            date: null,
-                            timeSlot: null,
-                            method: null,
+                            patientId: "",
+                            scheduleId: "",
+                            doctorId: "",
+                            symptoms: "",
+                            note: "",
+                            slotId: 0,
+                            status: AppointmentStatusEnum.PENDING,
+                            consultationType: ConsultationType.DIRECT_CONSULTATION,
+                            addressDetail: "",
                         });
+                        // Reset UI state
+                        setSelectedService(null);
+                        setSelectedDoctor(null);
+                        setSelectedDate(null);
+                        setSelectedTimeSlot(null);
+                        setSelectedMethod(null);
                     },
                 },
             ]
@@ -98,20 +148,23 @@ const BookingAppointment: React.FC = () => {
 
     const handleConfirm = () => {
         if (isBookingComplete) {
+            // Gọi hàm handleBooking được truyền từ props
+            handleBooking(bookingState);
+
             Alert.alert(
                 'Đặt lịch thành công',
-                `Bạn đã đặt lịch hẹn:\n\nDịch vụ: ${bookingState.service?.name || 'N/A'}\nBác sĩ: ${bookingState.doctor?.name || 'N/A'}\nNgày: ${bookingState.date?.toLocaleDateString('vi-VN') || 'N/A'}\nGiờ: ${bookingState.timeSlot?.time || 'N/A'}\nHình thức: ${bookingState.method?.name || 'N/A'}`,
+                `Bạn đã đặt lịch hẹn:\n\nGhi chú: ${bookingState.note}\nBác sĩ ID: ${bookingState.doctorId}`,
                 [{ text: 'OK' }]
             );
         }
     };
 
     const isBookingComplete = Boolean(
-        bookingState.service &&
-        bookingState.doctor &&
-        bookingState.date &&
-        bookingState.timeSlot &&
-        bookingState.method
+        bookingState.patientId &&
+        bookingState.scheduleId &&
+        bookingState.doctorId &&
+        bookingState.slotId &&
+        bookingState.consultationType
     );
 
     return (
@@ -124,35 +177,35 @@ const BookingAppointment: React.FC = () => {
                 {/* Service Selection */}
                 <ServiceSelector
                     services={SERVICES}
-                    selectedService={bookingState.service}
+                    selectedService={selectedService}
                     onServiceSelect={handleServiceSelect}
                 />
-
-                {/* Doctor Selection - Only show if service is selected */}
-                {bookingState.service && (
-                    <DoctorSelector
-                        doctors={DOCTORS}
-                        selectedDoctor={bookingState.doctor}
-                        onDoctorSelect={handleDoctorSelect}
-                    />
-                )}
-
-                {/* Date & Time Selection - Only show if doctor is selected */}
-                {bookingState.doctor && (
+                {/* Date & Time Selection - Only show if service is selected */}
+                {selectedService && (
                     <DateTimeSelector
-                        timeSlots={TIME_SLOTS}
-                        selectedDate={bookingState.date}
-                        selectedTimeSlot={bookingState.timeSlot}
+                        timeSlots={timeSlots}
+                        selectedDate={selectedDate}
+                        selectedTimeSlot={selectedTimeSlot}
                         onDateSelect={handleDateSelect}
                         onTimeSlotSelect={handleTimeSlotSelect}
                     />
                 )}
+                {/* Doctor Selection - Only show if date and time are selected */}
+                {selectedDate && selectedTimeSlot && (
+                    <DoctorSelector
+                        doctors={doctors}
+                        selectedDoctor={selectedDoctor}
+                        onDoctorSelect={handleDoctorSelect}
+                    />
+                )}
 
-                {/* Method Selection - Only show if date and time are selected */}
-                {bookingState.date && bookingState.timeSlot && (
+
+
+                {/* Method Selection - Only show if doctor is selected */}
+                {selectedDoctor && (
                     <MethodSelector
-                        methods={BOOKING_METHODS}
-                        selectedMethod={bookingState.method}
+                        methods={CONSULTATION_TYPES}
+                        selectedMethod={selectedMethod}
                         onMethodSelect={handleMethodSelect}
                     />
                 )}

@@ -6,6 +6,8 @@ import {
     Modal,
     FlatList,
     StyleSheet,
+    TouchableWithoutFeedback,
+    Pressable,
 } from 'react-native';
 import { colors } from '../../../theme/colors';
 import { spacing, borderRadius } from '../../../theme/spacing';
@@ -79,37 +81,52 @@ export const DropdownSelect: React.FC<DropdownSelectProps> = ({
                 animationType="fade"
                 onRequestClose={() => setIsVisible(false)}
             >
-                <TouchableOpacity
+                <Pressable
                     style={styles.modalOverlay}
                     onPress={() => setIsVisible(false)}
                 >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{label}</Text>
-                        <FlatList
-                            data={options}
-                            keyExtractor={item => item.value}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.optionItem,
-                                        item.value === value && styles.selectedOption,
-                                    ]}
-                                    onPress={() => handleSelect(item.value)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.optionText,
-                                            item.value === value && styles.selectedOptionText,
-                                        ]}
-                                    >
-                                        {item.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    </View>
-                </TouchableOpacity>
+                    <TouchableWithoutFeedback>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>{label}</Text>
+
+                            <FlatList
+                                data={options}
+                                keyExtractor={item => item.value}
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                                renderItem={({ item }) => {
+                                    const isSelected = item.value === value;
+                                    return (
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.optionItem,
+                                                isSelected && styles.selectedOption,
+                                            ]}
+                                            onPress={() =>
+                                                handleSelect(item.value)
+                                            }
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.optionText,
+                                                    isSelected &&
+                                                    styles.selectedOptionText,
+                                                ]}
+                                            >
+                                                {item.label}
+                                            </Text>
+                                            {isSelected && (
+                                                <Text style={styles.checkmark}>
+                                                    ✓
+                                                </Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                            />
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Pressable>
             </Modal>
         </View>
     );
@@ -168,6 +185,8 @@ const styles = StyleSheet.create({
         color: colors.error,
         marginTop: spacing[1],
     },
+
+    /** MODAL UI TÁCH BIỆT RÕ RÀNG **/
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -177,26 +196,46 @@ const styles = StyleSheet.create({
     modalContent: {
         backgroundColor: colors.white,
         borderRadius: borderRadius.xl,
-        padding: spacing[6],
+        paddingVertical: spacing[6],
+        paddingHorizontal: spacing[5],
         marginHorizontal: spacing[8],
         maxHeight: '70%',
         minWidth: '80%',
+        borderWidth: 1,
+        borderColor: colors.gray[200],
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
     },
     modalTitle: {
         fontSize: fontSize.lg,
         fontFamily: fontFamily.montserrat.semiBold,
         color: colors.text.primary,
-        marginBottom: spacing[4],
+        marginBottom: spacing[5],
         textAlign: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: colors.gray[300],
+        paddingBottom: spacing[2],
     },
+
+    /** OPTION LIST **/
     optionItem: {
         paddingVertical: spacing[3],
         paddingHorizontal: spacing[4],
         borderRadius: borderRadius.md,
         marginVertical: spacing[1],
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: colors.gray[200],
+        backgroundColor: colors.white,
     },
     selectedOption: {
-        backgroundColor: colors.primary[100],
+        backgroundColor: colors.primary[50],
+        borderColor: colors.primary[400],
     },
     optionText: {
         fontSize: fontSize.base,
@@ -206,5 +245,10 @@ const styles = StyleSheet.create({
     selectedOptionText: {
         color: colors.primary[700],
         fontFamily: fontFamily.montserrat.medium,
+    },
+    checkmark: {
+        fontSize: fontSize.base,
+        color: colors.primary[700],
+        marginLeft: spacing[3],
     },
 });

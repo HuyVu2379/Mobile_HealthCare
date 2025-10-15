@@ -1,38 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View,
     Text,
     FlatList,
     StyleSheet,
-    SafeAreaView,
     StatusBar,
     TouchableOpacity,
     Modal,
+    ActivityIndicator,
 } from 'react-native';
 import DatePicker from 'react-native-date-picker';
 import AppointmentCard from '../components/ui/AppointmentHistory/AppointmentCard';
 import { BookingAppointment } from '../components/ui/AppointmentHistory';
-interface AppointmentData {
-    id: string;
-    type: 'in-person' | 'online';
-    title: string;
-    doctor: string;
-    date: string;
-    time: string;
-    status: 'upcoming' | 'completed' | 'cancelled';
-    statusLabel: string;
-    actions: Array<{
-        type: 'reschedule' | 'cancel' | 'join';
-        label: string;
-        onPress: () => void;
-    }>;
-}
+import useAppointment from '../hooks/useAppointment';
+import { useAuthContext } from '../contexts/AuthContext';
+import { Appointment, AppointmentStatusEnum, CreateAppointmentRequest } from '../types/appointment';
 
 const AppointmentTimelineScreen: React.FC = () => {
+    const { user } = useAuthContext();
+    const isFirstMount = useRef(true);
+    const isInitialApiCall = useRef(true);
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
-    const [selectedType, setSelectedType] = useState('Tất cả');
-
+    const [selectedType, setSelectedType] = useState('ALL');
+    const [appointmentRequest, setAppointmentRequest] = useState({
+        patientId: user?.userId || '',
+        consultationType: 'ALL',
+        page: 0,
+        size: 10,
+        startTime: '',
+        endTime: '',
+    });
     // Modal state for booking
     const [showBookingModal, setShowBookingModal] = useState(false);
 
@@ -44,8 +42,13 @@ const AppointmentTimelineScreen: React.FC = () => {
 
     // Dropdown states
     const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-    const typeOptions = ['Tất cả', 'Khám trực tiếp', 'Tư vấn online'];
-
+    const typeOptions = {
+        ALL: 'Tất cả',
+        DIRECT_CONSULTATION: 'Khám trực tiếp',
+        ONLINE_CONSULTATION: 'Tư vấn trực tuyến',
+        LAB_TEST: 'Xét nghiệm',
+        FOLLOW_UP: 'Tái khám'
+    };
     // Format date to dd/MM/yyyy
     const formatDate = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -54,60 +57,78 @@ const AppointmentTimelineScreen: React.FC = () => {
         return `${day}/${month}/${year}`;
     };
 
-    // Dữ liệu mẫu
-    const appointments: AppointmentData[] = [
-        {
-            id: '1',
-            type: 'in-person',
-            title: 'Khám tổng quát',
-            doctor: 'BS. Lê Thị Mai',
-            date: '20/1/2024',
-            time: '09:30',
-            status: 'upcoming',
-            statusLabel: 'Sắp tới',
-            actions: [
-                {
-                    type: 'reschedule',
-                    label: 'Đổi lịch',
-                    onPress: () => console.log('Đổi lịch'),
-                },
-                {
-                    type: 'cancel',
-                    label: 'Hủy lịch',
-                    onPress: () => console.log('Hủy lịch'),
-                },
-            ],
-        },
-        {
-            id: '2',
-            type: 'online',
-            title: 'Tư vấn thận học',
-            doctor: 'BS. Trần Minh Hoàng',
-            date: '15/1/2024',
-            time: '14:00',
-            status: 'upcoming',
-            statusLabel: 'Sắp tới',
-            actions: [
-                {
-                    type: 'join',
-                    label: 'Vào phòng tư vấn',
-                    onPress: () => console.log('Vào phòng tư vấn'),
-                },
-                {
-                    type: 'reschedule',
-                    label: 'Đổi lịch',
-                    onPress: () => console.log('Đổi lịch'),
-                },
-                {
-                    type: 'cancel',
-                    label: 'Hủy lịch',
-                    onPress: () => console.log('Hủy lịch'),
-                },
-            ],
-        },
-    ];
+    // Use AppointmentState
+    const { appointments, handleGetAppointments, error, loading, handleSendSocketEventAppointment } = useAppointment();
 
-    const renderAppointment = ({ item, index }: { item: AppointmentData; index: number }) => (
+    // Hàm chuyển đổi BookingState sang EventSocketAppointment
+    const handleBookingSubmit = (bookingData: CreateAppointmentRequest) => {
+        // Chuyển đổi dữ liệu từ BookingState sang EventSocketAppointment
+        const eventData = {
+            appointmentId: null,
+            patientId: user?.userId || null,
+            doctorId: bookingData.doctorId || null,
+            event: 'BOOKING_APPOINTMENT', // hoặc giá trị enum phù hợp
+            status: AppointmentStatusEnum.PENDING,
+            createAppointmentRequest: {
+                patientId: bookingData.patientId,
+                scheduleId: bookingData.scheduleId,
+                doctorId: bookingData.doctorId,
+                symptoms: bookingData.symptoms,
+                note: bookingData.note,
+                slotId: bookingData.slotId,
+                status: AppointmentStatusEnum.PENDING,
+                consultationType: bookingData.consultationType,
+                addressDetail: bookingData.addressDetail,
+            },
+            updateAppointmentRequest: null,
+        };
+
+        handleSendSocketEventAppointment(eventData as any);
+    };
+
+    // Update appointmentRequest when filters change
+    useEffect(() => {
+        // Bỏ qua lần render đầu tiên vì đã có giá trị mặc định
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
+        }
+
+        setAppointmentRequest(prev => ({
+            ...prev,
+            startTime: fromDate ? fromDate.split('/').reverse().join('-') : '',
+            endTime: toDate ? toDate.split('/').reverse().join('-') : '',
+            consultationType: selectedType
+        }));
+    }, [fromDate, toDate, selectedType]);
+
+    useEffect(() => {
+        // Gọi API ngay lập tức khi component mount lần đầu
+        if (isInitialApiCall.current) {
+            isInitialApiCall.current = false;
+            console.log("🚀 [Initial Mount] Calling API with:", appointmentRequest);
+            const fetchData = async () => {
+                await handleGetAppointments(appointmentRequest);
+            };
+            fetchData();
+            return;
+        }
+
+        // Debounce: Chờ 4 giây sau khi filters thay đổi mới gọi API
+        console.log("⏱️ [Debounce] Waiting 4s to call API with:", appointmentRequest);
+        const timeoutId = setTimeout(async () => {
+            console.log("🔄 [API Call] Calling API after debounce:", appointmentRequest);
+            await handleGetAppointments(appointmentRequest);
+        }, 4000);
+
+        // Cleanup function: Hủy timeout nếu appointmentRequest thay đổi trước khi timeout hoàn thành
+        return () => {
+            console.log("🧹 [Cleanup] Timeout cleared");
+            clearTimeout(timeoutId);
+        };
+    }, [appointmentRequest]);
+
+    const renderAppointment = ({ item, index }: { item: Appointment; index: number }) => (
         <AppointmentCard
             appointment={item}
             isFirst={index === 0}
@@ -176,27 +197,27 @@ const AppointmentTimelineScreen: React.FC = () => {
                             style={styles.dropdown}
                             onPress={() => setShowTypeDropdown(!showTypeDropdown)}
                         >
-                            <Text style={styles.dropdownText}>{selectedType}</Text>
+                            <Text style={styles.dropdownText}>{typeOptions[selectedType as keyof typeof typeOptions]}</Text>
                             <Text style={styles.dropdownIcon}>▼</Text>
                         </TouchableOpacity>
 
                         {/* Dropdown Options */}
                         {showTypeDropdown && (
                             <View style={styles.dropdownOptions}>
-                                {typeOptions.map((option, index) => (
+                                {Object.entries(typeOptions).map(([key, value]) => (
                                     <TouchableOpacity
-                                        key={index}
+                                        key={key}
                                         style={styles.dropdownOption}
                                         onPress={() => {
-                                            setSelectedType(option);
+                                            setSelectedType(key);
                                             setShowTypeDropdown(false);
                                         }}
                                     >
                                         <Text style={[
                                             styles.dropdownOptionText,
-                                            selectedType === option && styles.selectedOptionText
+                                            selectedType === key && styles.selectedOptionText
                                         ]}>
-                                            {option}
+                                            {value}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -216,13 +237,45 @@ const AppointmentTimelineScreen: React.FC = () => {
             </View>
 
             {/* Appointments List */}
-            <FlatList
-                data={appointments}
-                renderItem={renderAppointment}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContainer}
-                showsVerticalScrollIndicator={false}
-            />
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#2196F3" />
+                    <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+                </View>
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorIcon}>⚠️</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => handleGetAppointments(appointmentRequest)}
+                    >
+                        <Text style={styles.retryButtonText}>Thử lại</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : appointments.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyIcon}>📅</Text>
+                    <Text style={styles.emptyTitle}>Chưa có lịch khám</Text>
+                    <Text style={styles.emptySubtitle}>
+                        Bạn chưa có lịch khám nào trong khoảng thời gian này
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.emptyButton}
+                        onPress={() => setShowBookingModal(true)}
+                    >
+                        <Text style={styles.emptyButtonText}>Đặt lịch ngay</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
+                    data={appointments}
+                    renderItem={renderAppointment}
+                    keyExtractor={(item) => item.appointmentId.toString()}
+                    contentContainerStyle={styles.listContainer}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
 
             {/* Booking Modal */}
             <Modal
@@ -241,7 +294,7 @@ const AppointmentTimelineScreen: React.FC = () => {
                             <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>
                     </View>
-                    <BookingAppointment />
+                    <BookingAppointment handleBooking={handleBookingSubmit} />
                 </View>
             </Modal>
 
@@ -490,6 +543,82 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666666',
         fontWeight: '500',
+    },
+    // Loading styles
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 60,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#666666',
+    },
+    // Error styles
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+        paddingVertical: 60,
+    },
+    errorIcon: {
+        fontSize: 48,
+        marginBottom: 16,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666666',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#2196F3',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    // Empty state styles
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+        paddingVertical: 60,
+    },
+    emptyIcon: {
+        fontSize: 64,
+        marginBottom: 16,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333333',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: '#666666',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    emptyButton: {
+        backgroundColor: '#2196F3',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    emptyButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

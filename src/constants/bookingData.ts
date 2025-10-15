@@ -1,29 +1,43 @@
-import { Service, Doctor, TimeSlot, BookingMethod } from '../types/booking';
+import { Service, Doctor } from '../types/booking';
+import { ConsultationType } from '../types/appointment';
+
+// TimeSlot được định nghĩa trong booking constants, không dùng từ types
+interface TimeSlot {
+    id: string;
+    time: string;
+    available: boolean;
+}
 
 export const SERVICES: Service[] = [
     {
         id: '1',
-        name: 'Tư vấn thần học',
-        price: 500000,
-        description: 'Tư vấn chuyên khoa về các vấn đề liên quan đến thần'
+        name: 'Tư vấn thận học',
+        description: 'Tư vấn chuyên khoa về các vấn đề liên quan đến thận'
     },
     {
         id: '2',
         name: 'Khám tổng quát',
-        price: 300000,
         description: 'Khám sức khỏe tổng quát và tư vấn chế độ sinh hoạt'
     },
     {
         id: '3',
         name: 'Tư vấn dinh dưỡng',
-        price: 200000,
-        description: 'Tư vấn chế độ ăn uống phù hợp với bệnh thần'
+        description: 'Tư vấn chế độ ăn uống phù hợp với bệnh thận'
     },
     {
         id: '4',
         name: 'Theo dõi định kỳ',
-        price: 250000,
         description: 'Khám theo dõi tình trạng bệnh định kỳ'
+    },
+    {
+        id: '5',
+        name: 'Tư vấn điều trị',
+        description: 'Tư vấn các phương pháp điều trị bệnh thận'
+    },
+    {
+        id: '6',
+        name: 'Khám chuyên sâu',
+        description: 'Khám và chẩn đoán các bệnh lý thận phức tạp'
     }
 ];
 
@@ -58,17 +72,19 @@ export const TIME_SLOTS: TimeSlot[] = [
     { id: '4', time: '16:30', available: true }
 ];
 
-export const BOOKING_METHODS: BookingMethod[] = [
-    {
-        id: '1',
-        name: 'Khám trực tiếp',
-        icon: 'map-pin',
-        type: 'in-person'
-    },
-    {
-        id: '2',
-        name: 'Tư vấn online',
-        icon: 'video',
-        type: 'online'
-    }
+// Sử dụng trực tiếp ConsultationType enum
+export const CONSULTATION_TYPES = [
+    ConsultationType.DIRECT_CONSULTATION,
+    ConsultationType.ONLINE_CONSULTATION,
+    ConsultationType.LAB_TEST,
+    ConsultationType.FOLLOW_UP
 ];
+
+// Map icon cho từng loại consultation với fallback
+export const CONSULTATION_TYPE_ICONS: Record<ConsultationType, string> = {
+    [ConsultationType.ALL]: 'list',
+    [ConsultationType.DIRECT_CONSULTATION]: 'home',         // Icon nhà - khám trực tiếp
+    [ConsultationType.ONLINE_CONSULTATION]: 'video',        // Icon video - tư vấn trực tuyến
+    [ConsultationType.LAB_TEST]: 'clipboard',               // Icon clipboard - xét nghiệm
+    [ConsultationType.FOLLOW_UP]: 'calendar'                // Icon calendar - tái khám
+};
