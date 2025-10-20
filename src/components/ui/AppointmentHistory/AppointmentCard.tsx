@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import AppointmentIcon from './AppointmentIcon';
 import AppointmentStatus from './AppointmentStatus';
 import AppointmentActions from './AppointmentActions';
-import { Appointment, AppointmentStatusEnum, ConsultationType } from '../../../types/appointment';
+import { Appointment, AppointmentStatusEnum, ConsultationType, ConsultationTypeLabels, AppointmentStatusLabels } from '../../../types/appointment';
 
 interface AppointmentCardProps {
     appointment: Appointment;

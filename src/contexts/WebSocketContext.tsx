@@ -15,6 +15,7 @@ interface WebSocketContextType {
     disconnect: () => void;
     lastMessage: any;
     subscribe: (callback: (message: any) => void) => () => void;
+    authenticate: (userId: string) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -27,12 +28,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     const [isConnected, setIsConnected] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
     const [lastMessage, setLastMessage] = useState<any>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     const ws = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<number | null>(null);
     const reconnectAttempts = useRef(0);
     const maxReconnectAttempts = 5;
     const subscribers = useRef<Set<(message: any) => void>>(new Set());
+    const pendingUserId = useRef<string | null>(null);
 
     const connect = useCallback(() => {
         if (ws.current?.readyState === WebSocket.CONNECTING || ws.current?.readyState === WebSocket.OPEN) {
@@ -49,6 +52,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
                 setIsConnected(true);
                 setConnectionStatus('connected');
                 reconnectAttempts.current = 0;
+
+                // Auto-authenticate if userId is pending
+                if (pendingUserId.current) {
+                    console.log('🔐 Auto-authenticating with pending userId:', pendingUserId.current);
+                    send(SOCKET_ACTIONS.AUTHENTICATION, { userId: pendingUserId.current });
+                }
             };
 
             ws.current.onmessage = (event) => {
@@ -143,6 +152,18 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         };
     }, []);
 
+    const authenticate = useCallback((userId: string) => {
+        console.log('🔐 Authenticating user:', userId);
+        pendingUserId.current = userId;
+
+        if (isConnected) {
+            send(SOCKET_ACTIONS.AUTHENTICATION, { userId });
+            setIsAuthenticated(true);
+        } else {
+            console.log('⏳ WebSocket not connected yet, will authenticate when connected');
+        }
+    }, [isConnected, send]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -157,7 +178,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         connect,
         disconnect,
         lastMessage,
-        subscribe
+        subscribe,
+        authenticate
     };
 
     return (

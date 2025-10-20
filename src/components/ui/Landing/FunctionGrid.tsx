@@ -23,14 +23,14 @@ const gridData = [
     },
     {
         id: 3,
-        routing: 'FOLLOW',
+        routing: ROUTING.BOTTOM_TAB,
         imageUrl: 'https://images.unsplash.com/photo-1584515933487-779824d29309?w=400',
         subtitle: 'Hồ sơ bệnh án',
         title: 'Theo dõi và lưu trữ hồ sơ của bạn'
     },
     {
         id: 4,
-        routing: 'FOLLOW',
+        routing: ROUTING.BOTTOM_TAB,
         imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400',
         subtitle: 'Kết quả xét nghiệm',
         title: 'Kiểm tra tức thì'

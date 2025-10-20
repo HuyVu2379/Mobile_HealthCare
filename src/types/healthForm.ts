@@ -150,3 +150,37 @@ export const convertFormDataToApiData = (formData: HealthFormData): HealthFormAp
 
     return apiData;
 };
+enum Classification {
+    "IMPROVING", "STABLE", "WORSENING", "INSUFFICIENT_HISTORY"
+}
+
+enum Status {
+    "WARNING", "NORMAL", "IMPROVING"
+}
+
+export interface TrendResponse {
+    classification: Classification,
+    stagePrevious: number,
+    stageCurrent: number,
+    confidenceChange: number,
+    metricPrevious: number,
+    metricCurrent: number,
+    metricChangePct: number,
+    metricName: String,
+    summary: String
+}
+
+export interface MetricComparison {
+    metric: String,
+    previousValue: number,
+    currentValue: number,
+    unit: String,
+    changePct: number,
+    status: Status,
+    message: String
+}
+
+export interface AlertResponse {
+    trend: TrendResponse,
+    metricComparisons: MetricComparison[]
+}

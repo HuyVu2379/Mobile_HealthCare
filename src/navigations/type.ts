@@ -9,4 +9,11 @@ export type RootStackParamList = {
     [ROUTING.APPOINTMENT]: undefined;
     [ROUTING.PREDICT]: undefined;
     [ROUTING.SOCKET_TEST]: undefined;
+    [ROUTING.BOTTOM_TAB]: undefined;
+};
+
+export type BottomTabParamList = {
+    [ROUTING.PERSONAL_INFO]: undefined;
+    [ROUTING.TEST_HISTORY]: undefined;
+    [ROUTING.MEDICAL_RECORD]: undefined;
 };

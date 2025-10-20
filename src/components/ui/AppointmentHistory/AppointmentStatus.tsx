@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { AppointmentStatusEnum } from '../../../types/appointment';
+import { AppointmentStatusEnum, AppointmentStatusLabels } from '../../../types/appointment';
 
 interface AppointmentStatusProps {
     status: AppointmentStatusEnum;
@@ -10,77 +10,58 @@ const AppointmentStatus: React.FC<AppointmentStatusProps> = ({ status }) => {
     // Debug: In ra giá trị status
     console.log('AppointmentStatus received:', status);
 
-    // Mapping từ key sang value tiếng Việt
+    // Lấy text hiển thị từ Labels
     const getStatusText = () => {
-        const statusStr = String(status);
-
-        // Map key từ backend sang value tiếng Việt
-        const statusMap: { [key: string]: string } = {
-            'PENDING': 'Đang chờ',
-            'CONFIRMED': 'Đã xác nhận',
-            'CANCELED': 'Đã hủy',
-            'REJECTED': 'Đã từ chối',
-            'COMPLETED': 'Đã hoàn thành',
-            'NO_SHOW': 'Không đến',
-            'RESCHEDULED': 'Đã lên lịch lại'
-        };
-
-        // Nếu status là key từ backend, trả về value tiếng Việt
-        if (statusMap[statusStr]) {
-            return statusMap[statusStr];
-        }
-
-        // Nếu status đã là value tiếng Việt, trả về luôn
-        return statusStr;
+        return AppointmentStatusLabels[status] || String(status);
     };
 
     const getStatusStyle = () => {
         const statusStr = String(status);
 
-        // So sánh với cả enum value và string key
-        if (statusStr === AppointmentStatusEnum.PENDING || statusStr === 'PENDING') {
+        // So sánh với enum key
+        if (statusStr === AppointmentStatusEnum.PENDING) {
             return {
                 backgroundColor: '#E3F2FD',
                 color: '#1976D2',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.CONFIRMED || statusStr === 'CONFIRMED') {
+        if (statusStr === AppointmentStatusEnum.CONFIRMED) {
             return {
                 backgroundColor: '#E8F5E8',
                 color: '#388E3C',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.COMPLETED || statusStr === 'COMPLETED') {
+        if (statusStr === AppointmentStatusEnum.COMPLETED) {
             return {
                 backgroundColor: '#E8F5E8',
                 color: '#388E3C',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.CANCELED || statusStr === 'CANCELED') {
+        if (statusStr === AppointmentStatusEnum.CANCELED) {
             return {
                 backgroundColor: '#FFEBEE',
                 color: '#D32F2F',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.REJECTED || statusStr === 'REJECTED') {
+        if (statusStr === AppointmentStatusEnum.REJECTED) {
             return {
                 backgroundColor: '#FFEBEE',
                 color: '#D32F2F',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.NO_SHOW || statusStr === 'NO_SHOW') {
+        if (statusStr === AppointmentStatusEnum.NO_SHOW) {
             return {
                 backgroundColor: '#FFF3E0',
                 color: '#F57C00',
             };
         }
 
-        if (statusStr === AppointmentStatusEnum.RESCHEDULED || statusStr === 'RESCHEDULED') {
+        if (statusStr === AppointmentStatusEnum.RESCHEDULED) {
             return {
                 backgroundColor: '#F3E5F5',
                 color: '#7B1FA2',

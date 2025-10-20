@@ -48,21 +48,42 @@ export interface TimeSlot {
 }
 
 export enum ConsultationType {
-    ALL = "Tất cả",
-    DIRECT_CONSULTATION = "Khám trực tiếp",
-    ONLINE_CONSULTATION = "Tư vấn trực tuyến",
-    LAB_TEST = "Xét nghiệm",
-    FOLLOW_UP = "Tái khám"
+    ALL = "ALL",
+    DIRECT_CONSULTATION = "DIRECT_CONSULTATION",
+    ONLINE_CONSULTATION = "ONLINE_CONSULTATION",
+    LAB_TEST = "LAB_TEST",
+    FOLLOW_UP = "FOLLOW_UP"
 }
+
+// Labels hiển thị cho ConsultationType
+export const ConsultationTypeLabels: Record<ConsultationType, string> = {
+    [ConsultationType.ALL]: "Tất cả",
+    [ConsultationType.DIRECT_CONSULTATION]: "Khám trực tiếp",
+    [ConsultationType.ONLINE_CONSULTATION]: "Tư vấn trực tuyến",
+    [ConsultationType.LAB_TEST]: "Xét nghiệm",
+    [ConsultationType.FOLLOW_UP]: "Tái khám"
+};
+
 export enum AppointmentStatusEnum {
-    PENDING = "Đang chờ",
-    CONFIRMED = "Đã xác nhận",
-    CANCELED = "Đã hủy",
-    REJECTED = "Đã từ chối",
-    COMPLETED = "Đã hoàn thành",
-    NO_SHOW = "Không đến",
-    RESCHEDULED = "Đã lên lịch lại"
+    PENDING = "PENDING",
+    CONFIRMED = "CONFIRMED",
+    CANCELED = "CANCELED",
+    REJECTED = "REJECTED",
+    COMPLETED = "COMPLETED",
+    NO_SHOW = "NO_SHOW",
+    RESCHEDULED = "RESCHEDULED"
 }
+
+// Labels hiển thị cho AppointmentStatusEnum
+export const AppointmentStatusLabels: Record<AppointmentStatusEnum, string> = {
+    [AppointmentStatusEnum.PENDING]: "Đang chờ",
+    [AppointmentStatusEnum.CONFIRMED]: "Đã xác nhận",
+    [AppointmentStatusEnum.CANCELED]: "Đã hủy",
+    [AppointmentStatusEnum.REJECTED]: "Đã từ chối",
+    [AppointmentStatusEnum.COMPLETED]: "Đã hoàn thành",
+    [AppointmentStatusEnum.NO_SHOW]: "Không đến",
+    [AppointmentStatusEnum.RESCHEDULED]: "Đã lên lịch lại"
+};
 
 export interface EventSocketAppointment {
     appointmentId: String | null;
@@ -110,4 +131,20 @@ export interface DoctorClientResponse {
     experienceYears: number;
     avatarUrl: string;
     clinicAddress: string;
+    scheduleId: string;
 }
+
+export enum AppointmentAction {
+    BOOKING_APPOINTMENT = "BOOKING_APPOINTMENT",
+    UPDATE_APPOINTMENT_STATUS = "UPDATE_APPOINTMENT_STATUS",
+    RESCHEDULE_APPOINTMENT = "RESCHEDULE_APPOINTMENT",
+    CANCEL_APPOINTMENT = "CANCEL_APPOINTMENT"
+}
+
+// Labels hiển thị cho AppointmentAction
+export const AppointmentActionLabels: Record<AppointmentAction, string> = {
+    [AppointmentAction.BOOKING_APPOINTMENT]: "Đặt lịch hẹn",
+    [AppointmentAction.UPDATE_APPOINTMENT_STATUS]: "Cập nhật trạng thái lịch hẹn",
+    [AppointmentAction.RESCHEDULE_APPOINTMENT]: "Lên lịch lại cuộc hẹn",
+    [AppointmentAction.CANCEL_APPOINTMENT]: "Hủy cuộc hẹn"
+};

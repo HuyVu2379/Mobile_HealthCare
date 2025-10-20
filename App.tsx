@@ -19,6 +19,7 @@ import { WebSocketTestScreen } from './src/screens';
 import { LogBox } from 'react-native';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 LogBox.ignoreAllLogs(false);
 enableScreens();
@@ -29,10 +30,10 @@ function App() {
       <WebSocketProvider>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <View style={styles.container}>
-          <View style={styles.backgroundPlaceholder}>
+          <SafeAreaView style={styles.backgroundPlaceholder}>
             <NavigationApp />
             <Toast />
-          </View>
+          </SafeAreaView>
         </View>
       </WebSocketProvider>
     </Provider>

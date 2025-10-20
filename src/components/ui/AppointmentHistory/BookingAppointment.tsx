@@ -5,10 +5,13 @@ import {
     Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 import ServiceSelector from './ServiceSelector';
 import DoctorSelector from './DoctorSelector';
 import DateTimeSelector from './DateTimeSelector';
 import MethodSelector from './MethodSelector';
+import SymptomsInput from './SymptomsInput';
 import ActionButtons from './ActionButtons';
 import { getTimeSlots } from '../../../services/schedule.service';
 import {
@@ -18,13 +21,16 @@ import {
     CONSULTATION_TYPES,
 } from '../../../constants/bookingData';
 import { AppointmentStatusEnum, ConsultationType, CreateAppointmentRequest, DoctorClientResponse, TimeSlot } from '../../../types/appointment';
-import useAppointment from '../../../hooks/useAppointment';
+import { useAppointmentContext } from '../../../contexts';
 
 interface BookingAppointmentProps {
     handleBooking: (bookingData: CreateAppointmentRequest) => void;
+    onClose?: () => void; // Callback để đóng modal
 }
+const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking, onClose }) => {
+    // Lấy thông tin người dùng từ Redux store
+    const { user } = useSelector((state: RootState) => state.user);
 
-const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }) => {
     const [bookingState, setBookingState] = useState<CreateAppointmentRequest>({
         patientId: "",
         scheduleId: "",
@@ -36,7 +42,9 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
         consultationType: ConsultationType.DIRECT_CONSULTATION,
         addressDetail: "",
     });
-    const { doctors, loading, error, handleGetDoctorByDateAndTimeSlot } = useAppointment();
+    // Use AppointmentContext instead of hook
+    const { doctors, loading, error, handleGetDoctorByDateAndTimeSlot } = useAppointmentContext();
+
     // State phụ để quản lý UI
     const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
     const [selectedDoctor, setSelectedDoctor] = useState<DoctorClientResponse | null>(null);
@@ -45,6 +53,17 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
     const [selectedMethod, setSelectedMethod] = useState<ConsultationType | null>(null);
 
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+
+    // Tự động gán patientId khi có thông tin user
+    useEffect(() => {
+        if (user?.userId) {
+            setBookingState(prev => ({
+                ...prev,
+                patientId: user.userId || "",
+            }));
+        }
+    }, [user]);
+
     const handleGetTimeSlots = async () => {
         try {
             const response = await getTimeSlots();
@@ -73,16 +92,12 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
         setBookingState(prev => ({
             ...prev,
             doctorId: doctor.doctorId || "",
+            scheduleId: doctor.scheduleId || "",
         }));
     };
 
     const handleDateSelect = (date: Date) => {
         setSelectedDate(date);
-        // Cập nhật scheduleId dựa trên date
-        setBookingState(prev => ({
-            ...prev,
-            scheduleId: date.toISOString().split('T')[0], // hoặc logic khác để lấy scheduleId
-        }));
     };
 
     const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
@@ -112,6 +127,16 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
         }));
     };
 
+    const handleSymptomsChange = (text: string) => {
+        // Giới hạn 500 ký tự
+        if (text.length <= 500) {
+            setBookingState(prev => ({
+                ...prev,
+                symptoms: text,
+            }));
+        }
+    };
+
     const handleCancel = () => {
         Alert.alert(
             'Hủy đặt lịch',
@@ -122,40 +147,44 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
                     text: 'Hủy',
                     style: 'destructive',
                     onPress: () => {
-                        // Reset bookingState
-                        setBookingState({
-                            patientId: "",
-                            scheduleId: "",
-                            doctorId: "",
-                            symptoms: "",
-                            note: "",
-                            slotId: 0,
-                            status: AppointmentStatusEnum.PENDING,
-                            consultationType: ConsultationType.DIRECT_CONSULTATION,
-                            addressDetail: "",
-                        });
-                        // Reset UI state
-                        setSelectedService(null);
-                        setSelectedDoctor(null);
-                        setSelectedDate(null);
-                        setSelectedTimeSlot(null);
-                        setSelectedMethod(null);
+                        resetBookingState();
+                        onClose?.(); // Đóng modal
                     },
                 },
             ]
         );
     };
 
+    const resetBookingState = () => {
+        // Reset bookingState
+        setBookingState({
+            patientId: user?.userId || "",
+            scheduleId: "",
+            doctorId: "",
+            symptoms: "",
+            note: "",
+            slotId: 0,
+            status: AppointmentStatusEnum.PENDING,
+            consultationType: ConsultationType.DIRECT_CONSULTATION,
+            addressDetail: "",
+        });
+        // Reset UI state
+        setSelectedService(null);
+        setSelectedDoctor(null);
+        setSelectedDate(null);
+        setSelectedTimeSlot(null);
+        setSelectedMethod(null);
+    };
+
     const handleConfirm = () => {
         if (isBookingComplete) {
+            // Debug: In ra bookingState trước khi gửi
+            console.log('📤 Sending booking data:', JSON.stringify(bookingState, null, 2));
             // Gọi hàm handleBooking được truyền từ props
             handleBooking(bookingState);
-
-            Alert.alert(
-                'Đặt lịch thành công',
-                `Bạn đã đặt lịch hẹn:\n\nGhi chú: ${bookingState.note}\nBác sĩ ID: ${bookingState.doctorId}`,
-                [{ text: 'OK' }]
-            );
+            // Reset state và đóng modal
+            resetBookingState();
+            onClose?.(); // Đóng modal
         }
     };
 
@@ -164,7 +193,8 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
         bookingState.scheduleId &&
         bookingState.doctorId &&
         bookingState.slotId &&
-        bookingState.consultationType
+        bookingState.consultationType &&
+        bookingState.symptoms.trim() // Yêu cầu nhập triệu chứng
     );
 
     return (
@@ -207,6 +237,14 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking }
                         methods={CONSULTATION_TYPES}
                         selectedMethod={selectedMethod}
                         onMethodSelect={handleMethodSelect}
+                    />
+                )}
+
+                {/* Symptoms Input - Only show if method is selected */}
+                {selectedMethod && (
+                    <SymptomsInput
+                        symptoms={bookingState.symptoms}
+                        onSymptomsChange={handleSymptomsChange}
                     />
                 )}
 

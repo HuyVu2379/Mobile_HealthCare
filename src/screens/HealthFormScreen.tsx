@@ -8,7 +8,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { InputField, DropdownSelect, Section, Button } from '../components/ui/HealthForm';
-import { HealthFormData, initialHealthFormData, convertFormDataToApiData, PredictHealthResponse } from '../types/healthForm';
+import { HealthFormData, initialHealthFormData, convertFormDataToApiData, PredictHealthResponse, AlertResponse } from '../types/healthForm';
 import {
     PHYSICAL_ACTIVITY_OPTIONS,
     DIET_OPTIONS,
@@ -30,7 +30,8 @@ const HealthFormScreen: React.FC = () => {
     const [errors, setErrors] = useState<Partial<HealthFormData>>({});
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [predictionResult, setPredictionResult] = useState<PredictHealthResponse | null>(null);
-    const { handlePredictCKD, handleCreatePredict } = useAI();
+    const [alertResult, setAlertResult] = useState<AlertResponse | null>(null);
+    const { handlePredictCKD, handleCreatePredict, handleGetAlert } = useAI();
     const { user } = useAuthContext();
 
     // Helper functions for styling based on prediction results
@@ -66,6 +67,49 @@ const HealthFormScreen: React.FC = () => {
         if (risk.includes('moderate')) return 'Trung Bình';
         if (risk.includes('high')) return 'Cao';
         return String(riskLevel);
+    };
+
+    const getTrendClassificationStyle = (classification: string) => {
+        const classStr = String(classification).toUpperCase();
+        if (classStr === 'IMPROVING') {
+            return { color: colors.success };
+        } else if (classStr === 'STABLE') {
+            return { color: colors.primary[600] };
+        } else if (classStr === 'WORSENING') {
+            return { color: colors.error };
+        } else if (classStr === 'INSUFFICIENT_HISTORY') {
+            return { color: colors.gray[500] };
+        }
+        return { color: colors.gray[700] };
+    };
+
+    const getTrendClassificationText = (classification: string) => {
+        const classStr = String(classification).toUpperCase();
+        if (classStr === 'IMPROVING') return 'Đang Cải Thiện';
+        if (classStr === 'STABLE') return 'Ổn Định';
+        if (classStr === 'WORSENING') return 'Đang Xấu Đi';
+        if (classStr === 'INSUFFICIENT_HISTORY') return 'Chưa Đủ Dữ Liệu';
+        return String(classification);
+    };
+
+    const getMetricStatusStyle = (status: string) => {
+        const statusStr = String(status).toUpperCase();
+        if (statusStr === 'IMPROVING') {
+            return { color: colors.success };
+        } else if (statusStr === 'NORMAL') {
+            return { color: colors.primary[600] };
+        } else if (statusStr === 'WARNING') {
+            return { color: colors.error };
+        }
+        return { color: colors.gray[700] };
+    };
+
+    const getMetricStatusText = (status: string) => {
+        const statusStr = String(status).toUpperCase();
+        if (statusStr === 'IMPROVING') return 'Cải Thiện';
+        if (statusStr === 'NORMAL') return 'Bình Thường';
+        if (statusStr === 'WARNING') return 'Cảnh Báo';
+        return String(status);
     };
 
     // Helper function to create health metrics from form data
@@ -205,6 +249,16 @@ const HealthFormScreen: React.FC = () => {
                             };
 
                             await handleCreatePredict(createPredictData);
+
+                            // Get alert trends after creating prediction
+                            const alertData = await handleGetAlert(user.userId);
+                            if (alertData) {
+                                setAlertResult(alertData);
+                            }
+
+                            // Reset form to initial state after successful submission
+                            setFormData(initialHealthFormData);
+                            setErrors({});
                         } catch (saveError) {
                             console.error('Error saving prediction to history:', saveError);
                             // Don't show error to user since the main prediction worked
@@ -499,6 +553,87 @@ const HealthFormScreen: React.FC = () => {
                 </View>
             )}
 
+            {alertResult && (
+                <View style={styles.alertContainer}>
+                    <Text style={styles.alertTitle}>Xu Hướng Sức Khỏe</Text>
+
+                    <View style={styles.alertCard}>
+                        {/* Trend Overview */}
+                        <View style={styles.trendOverviewContainer}>
+                            <Text style={styles.trendOverviewTitle}>Tổng Quan Xu Hướng</Text>
+
+                            <View style={styles.trendInfoRow}>
+                                <Text style={styles.trendLabel}>Phân Loại:</Text>
+                                <Text style={[styles.trendValue, getTrendClassificationStyle(String(alertResult.trend.classification))]}>
+                                    {getTrendClassificationText(String(alertResult.trend.classification))}
+                                </Text>
+                            </View>
+
+                            <View style={styles.trendInfoRow}>
+                                <Text style={styles.trendLabel}>Giai Đoạn Trước:</Text>
+                                <Text style={styles.trendValue}>Stage {alertResult.trend.stagePrevious}</Text>
+                            </View>
+
+                            <View style={styles.trendInfoRow}>
+                                <Text style={styles.trendLabel}>Giai Đoạn Hiện Tại:</Text>
+                                <Text style={styles.trendValue}>Stage {alertResult.trend.stageCurrent}</Text>
+                            </View>
+
+                            {/* <View style={styles.trendInfoRow}>
+                                <Text style={styles.trendLabel}>Thay Đổi Độ Tin Cậy:</Text>
+                                <Text style={[styles.trendValue, alertResult.trend.confidenceChange >= 0 ? { color: colors.success } : { color: colors.error }]}>
+                                    {alertResult.trend.confidenceChange >= 0 ? '+' : ''}{alertResult.trend.confidenceChange.toFixed(1)}%
+                                </Text>
+                            </View> */}
+
+                            <View style={styles.trendSummaryContainer}>
+                                <Text style={styles.trendSummaryLabel}>Tóm Tắt:</Text>
+                                <Text style={styles.trendSummaryText}>{alertResult.trend.summary}</Text>
+                            </View>
+                        </View>
+
+                        {/* Metric Comparisons */}
+                        {alertResult.metricComparisons && alertResult.metricComparisons.length > 0 && (
+                            <View style={styles.metricComparisonsContainer}>
+                                <Text style={styles.metricComparisonsTitle}>So Sánh Chỉ Số Sức Khỏe</Text>
+                                {alertResult.metricComparisons.map((metric, index) => (
+                                    <View key={index} style={styles.metricComparisonItem}>
+                                        <Text style={styles.metricName}>{metric.metric}</Text>
+
+                                        <View style={styles.metricValuesRow}>
+                                            <View style={styles.metricValueItem}>
+                                                <Text style={styles.metricValueLabel}>Trước:</Text>
+                                                <Text style={styles.metricValueText}>
+                                                    {metric.previousValue.toFixed(2)} {metric.unit}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.metricArrow}>→</Text>
+                                            <View style={styles.metricValueItem}>
+                                                <Text style={styles.metricValueLabel}>Hiện tại:</Text>
+                                                <Text style={styles.metricValueText}>
+                                                    {metric.currentValue.toFixed(2)} {metric.unit}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.metricStatusRow}>
+                                            <Text style={[styles.metricChange, metric.changePct >= 0 ? { color: colors.error } : { color: colors.success }]}>
+                                                {metric.changePct >= 0 ? '+' : ''}{metric.changePct.toFixed(1)}%
+                                            </Text>
+                                            <Text style={[styles.metricStatus, getMetricStatusStyle(String(metric.status))]}>
+                                                {getMetricStatusText(String(metric.status))}
+                                            </Text>
+                                        </View>
+
+                                        <Text style={styles.metricMessage}>{metric.message}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+                </View>
+            )}
+
             <View style={styles.bottomSpacing} />
         </ScrollView>
     );
@@ -671,6 +806,150 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: spacing[8],
+    },
+    // Alert and Trend Styles
+    alertContainer: {
+        marginHorizontal: spacing[6],
+        marginTop: spacing[6],
+    },
+    alertTitle: {
+        fontSize: fontSize['2xl'],
+        fontFamily: fontFamily.montserrat.bold,
+        color: colors.primary[700],
+        textAlign: 'center',
+        marginBottom: spacing[4],
+    },
+    alertCard: {
+        backgroundColor: colors.white,
+        borderRadius: borderRadius.xl,
+        padding: spacing[6],
+        shadowColor: colors.black,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    trendOverviewContainer: {
+        marginBottom: spacing[6],
+        paddingBottom: spacing[6],
+        borderBottomWidth: 2,
+        borderBottomColor: colors.gray[200],
+    },
+    trendOverviewTitle: {
+        fontSize: fontSize.lg,
+        fontFamily: fontFamily.montserrat.bold,
+        color: colors.primary[700],
+        marginBottom: spacing[4],
+    },
+    trendInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing[3],
+    },
+    trendLabel: {
+        fontSize: fontSize.base,
+        fontFamily: fontFamily.montserrat.medium,
+        color: colors.text.primary,
+    },
+    trendValue: {
+        fontSize: fontSize.base,
+        fontFamily: fontFamily.montserrat.bold,
+    },
+    trendSummaryContainer: {
+        marginTop: spacing[2],
+        backgroundColor: colors.gray[50],
+        padding: spacing[4],
+        borderRadius: borderRadius.lg,
+    },
+    trendSummaryLabel: {
+        fontSize: fontSize.base,
+        fontFamily: fontFamily.montserrat.medium,
+        color: colors.text.primary,
+        marginBottom: spacing[2],
+    },
+    trendSummaryText: {
+        fontSize: fontSize.sm,
+        fontFamily: fontFamily.montserrat.regular,
+        color: colors.text.secondary,
+        lineHeight: 20,
+    },
+    metricComparisonsContainer: {
+        marginTop: spacing[2],
+    },
+    metricComparisonsTitle: {
+        fontSize: fontSize.lg,
+        fontFamily: fontFamily.montserrat.bold,
+        color: colors.primary[700],
+        marginBottom: spacing[4],
+    },
+    metricComparisonItem: {
+        backgroundColor: colors.gray[50],
+        padding: spacing[4],
+        borderRadius: borderRadius.lg,
+        marginBottom: spacing[3],
+        borderLeftWidth: 4,
+        borderLeftColor: colors.primary[500],
+    },
+    metricName: {
+        fontSize: fontSize.base,
+        fontFamily: fontFamily.montserrat.bold,
+        color: colors.text.primary,
+        marginBottom: spacing[3],
+    },
+    metricValuesRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: spacing[2],
+    },
+    metricValueItem: {
+        flex: 1,
+    },
+    metricValueLabel: {
+        fontSize: fontSize.xs,
+        fontFamily: fontFamily.montserrat.medium,
+        color: colors.text.secondary,
+        marginBottom: spacing[1],
+    },
+    metricValueText: {
+        fontSize: fontSize.sm,
+        fontFamily: fontFamily.montserrat.semiBold,
+        color: colors.text.primary,
+    },
+    metricArrow: {
+        fontSize: fontSize.lg,
+        fontFamily: fontFamily.montserrat.bold,
+        color: colors.primary[500],
+        marginHorizontal: spacing[2],
+    },
+    metricStatusRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing[2],
+    },
+    metricChange: {
+        fontSize: fontSize.sm,
+        fontFamily: fontFamily.montserrat.bold,
+    },
+    metricStatus: {
+        fontSize: fontSize.sm,
+        fontFamily: fontFamily.montserrat.semiBold,
+        paddingHorizontal: spacing[3],
+        paddingVertical: spacing[1],
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.gray[100],
+    },
+    metricMessage: {
+        fontSize: fontSize.xs,
+        fontFamily: fontFamily.montserrat.regular,
+        color: colors.text.secondary,
+        lineHeight: 16,
+        fontStyle: 'italic',
     },
 });
 

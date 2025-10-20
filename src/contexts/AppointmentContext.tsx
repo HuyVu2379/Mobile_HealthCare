@@ -1,31 +1,58 @@
-import { useCallback, useEffect, useState } from "react";
-import { getAppointment, getDoctorByDateAndTimeSlot } from "../services/schedule.service"
-import { Appointment, DoctorClientResponse, EventSocketAppointment, GetAppointmentRequest } from "../types/appointment";
-import { useWebSocketContext } from "../contexts";
-import { SOCKET_ACTIONS } from "../constants/eventSocket";
-import { AppointmentAction, AppointmentActionLabels } from "../types/appointment";
-import Toast from "react-native-toast-message";
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { getAppointment, getDoctorByDateAndTimeSlot } from '../services/schedule.service';
+import { Appointment, DoctorClientResponse, EventSocketAppointment, GetAppointmentRequest } from '../types/appointment';
+import { useWebSocketContext } from './WebSocketContext';
+import { SOCKET_ACTIONS } from '../constants/eventSocket';
+import { AppointmentAction, AppointmentActionLabels } from '../types/appointment';
+import Toast from 'react-native-toast-message';
 
-const useAppointment = () => {
+interface AppointmentContextType {
+    appointments: Appointment[];
+    loading: boolean;
+    error: string | null;
+    doctors: DoctorClientResponse[];
+    refresh: boolean;
+    handleGetAppointments: (req: GetAppointmentRequest) => Promise<void>;
+    handleSendSocketEventAppointment: (data: EventSocketAppointment) => void;
+    handleGetDoctorByDateAndTimeSlot: (date: string, timeSlotId: number) => Promise<void>;
+}
+
+const AppointmentContext = createContext<AppointmentContextType | null>(null);
+
+interface AppointmentProviderProps {
+    children: ReactNode;
+}
+
+export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ children }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [doctors, setDoctors] = useState<DoctorClientResponse[]>([]);
-    const { isConnected: connected, send, subscribe } = useWebSocketContext();
     const [refresh, setRefresh] = useState<boolean>(false);
 
-    // Subscribe to WebSocket messages
+    const { isConnected: connected, send, subscribe } = useWebSocketContext();
+
+    // Subscribe to WebSocket messages - CHỈ MỘT LẦN cho toàn bộ app
     useEffect(() => {
+        console.log("🔗 AppointmentProvider: Setting up WebSocket subscription");
+        console.log("📊 Current WebSocket status - connected:", connected);
+
         const handleMessage = (data: any) => {
-            console.log("📩 Appointment message received:", data);
+            console.log("=".repeat(80));
+            console.log("📩 AppointmentContext - Message received!");
+            console.log("📦 Raw data:", JSON.stringify(data, null, 2));
+            console.log("=".repeat(80));
 
             const action = data.action || data;
             const messageData = data.data || data;
 
+            console.log("🎯 Parsed action:", action);
+            console.log("🔍 Expected:", SOCKET_ACTIONS.APPOINTMENT_RESPONSE);
+            console.log("✅ Match:", action === SOCKET_ACTIONS.APPOINTMENT_RESPONSE);
+
             switch (action) {
                 case SOCKET_ACTIONS.APPOINTMENT_RESPONSE:
                     if (messageData.success) {
-                        // Hiển thị thông báo thành công với label tiếng Việt
                         const eventLabel = messageData.eventType && AppointmentActionLabels[messageData.eventType as AppointmentAction]
                             ? AppointmentActionLabels[messageData.eventType as AppointmentAction]
                             : messageData.eventType || "Thao tác lịch hẹn";
@@ -37,7 +64,6 @@ const useAppointment = () => {
                         });
                         setRefresh(prev => !prev);
                     } else {
-                        // Hiển thị thông báo lỗi với label tiếng Việt
                         const eventLabel = messageData.eventType && AppointmentActionLabels[messageData.eventType as AppointmentAction]
                             ? AppointmentActionLabels[messageData.eventType as AppointmentAction]
                             : messageData.eventType || "Thao tác lịch hẹn";
@@ -55,13 +81,15 @@ const useAppointment = () => {
         };
 
         const unsubscribe = subscribe(handleMessage);
+        console.log("✅ AppointmentProvider: Subscription created");
 
         return () => {
+            console.log("🔌 AppointmentProvider: Unsubscribing");
             unsubscribe();
         };
     }, [subscribe, connected]);
 
-    const handleGetAppointments = async (req: GetAppointmentRequest) => {
+    const handleGetAppointments = useCallback(async (req: GetAppointmentRequest) => {
         setLoading(true);
         setError(null);
         try {
@@ -73,14 +101,14 @@ const useAppointment = () => {
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
     const handleSendSocketEventAppointment = useCallback((data: EventSocketAppointment) => {
+        console.log("📤 Sending appointment event:", data);
         send(SOCKET_ACTIONS.APPOINTMENT, data);
-        setLoading(false);
     }, [send]);
 
-    const handleGetDoctorByDateAndTimeSlot = async (date: string, timeSlotId: number) => {
+    const handleGetDoctorByDateAndTimeSlot = useCallback(async (date: string, timeSlotId: number) => {
         setLoading(true);
         setError(null);
         try {
@@ -92,17 +120,30 @@ const useAppointment = () => {
         } finally {
             setLoading(false);
         }
-    }
-    return {
-        handleGetAppointments,
-        handleSendSocketEventAppointment,
-        handleGetDoctorByDateAndTimeSlot,
+    }, []);
+
+    const value: AppointmentContextType = {
         appointments,
         loading,
         error,
         doctors,
-        refresh
-    }
-}
+        refresh,
+        handleGetAppointments,
+        handleSendSocketEventAppointment,
+        handleGetDoctorByDateAndTimeSlot,
+    };
 
-export default useAppointment;
+    return (
+        <AppointmentContext.Provider value={value}>
+            {children}
+        </AppointmentContext.Provider>
+    );
+};
+
+export const useAppointmentContext = (): AppointmentContextType => {
+    const context = useContext(AppointmentContext);
+    if (!context) {
+        throw new Error('useAppointmentContext must be used within an AppointmentProvider');
+    }
+    return context;
+};

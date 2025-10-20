@@ -20,5 +20,6 @@ export const SOCKET_ACTIONS = {
         DELETE_GROUP: 'delete_group',
         GROUP_DELETED: 'group_deleted',
     },
+    APPOINTMENT_RESPONSE: "schedule_appointment_response",
     APPOINTMENT: "schedule_appointment"
 };

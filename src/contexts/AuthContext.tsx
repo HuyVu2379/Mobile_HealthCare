@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const dispatch = useDispatch();
     const navigation = useNavigation<NavigationProp<ParamListBase>>();
     const { user, accessToken, refreshToken } = useSelector((state: RootState) => state.user);
-    const { connect, disconnect, isConnected } = useWebSocketContext();
+    const { connect, disconnect, isConnected, authenticate } = useWebSocketContext();
 
     const getCurrentUser = useCallback(async () => {
         try {
@@ -62,6 +62,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     console.log('🔐 Login successful, connecting to WebSocket...');
                     // Connect to WebSocket after successful login
                     connect();
+
+                    // Authenticate with WebSocket
+                    console.log('🔐 Authenticating WebSocket with userId:', userData.userId);
+                    authenticate(userData.userId);
 
                     Toast.show({
                         type: 'success',
@@ -147,20 +151,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (userData) {
                 console.log('🔐 Tokens loaded, connecting to WebSocket...');
                 connect();
+                authenticate(userData.userId);
             }
         } catch (error) {
             console.error("Load tokens failed", error);
         }
-    }, [dispatch, getCurrentUser, connect]);
+    }, [dispatch, getCurrentUser, connect, authenticate]);
 
     const checkAuth = useCallback(async (): Promise<boolean> => {
         try {
             const authenticated = await isAuthenticated();
             if (authenticated) {
-                await getCurrentUser();
+                const userData = await getCurrentUser();
                 if (!isConnected) {
                     console.log('🔐 User authenticated, connecting to WebSocket...');
                     connect();
+                }
+                if (userData) {
+                    authenticate(userData.userId);
                 }
                 return true;
             } else {
@@ -172,15 +180,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             disconnect();
             return false;
         }
-    }, [getCurrentUser, connect, disconnect, isConnected]);
+    }, [getCurrentUser, connect, disconnect, isConnected, authenticate]);
 
-    // Auto-connect WebSocket when user is available and not connected
+    // Auto-connect and authenticate WebSocket when user is available and not connected
     useEffect(() => {
         if (user && accessToken && !isConnected) {
             console.log('🔐 User available, auto-connecting to WebSocket...');
             connect();
         }
-    }, [user, accessToken, isConnected, connect]);
+
+        // Auto-authenticate when connected and user is available
+        if (user?.userId && isConnected) {
+            console.log('🔐 Auto-authenticating with userId:', user.userId);
+            authenticate(user.userId);
+        }
+    }, [user, accessToken, isConnected, connect, authenticate]);
 
     const value: AuthContextType = {
         user,

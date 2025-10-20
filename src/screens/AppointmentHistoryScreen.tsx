@@ -12,7 +12,7 @@ import {
 import DatePicker from 'react-native-date-picker';
 import AppointmentCard from '../components/ui/AppointmentHistory/AppointmentCard';
 import { BookingAppointment } from '../components/ui/AppointmentHistory';
-import useAppointment from '../hooks/useAppointment';
+import { useAppointmentContext } from '../contexts';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Appointment, AppointmentStatusEnum, CreateAppointmentRequest } from '../types/appointment';
 
@@ -57,8 +57,8 @@ const AppointmentTimelineScreen: React.FC = () => {
         return `${day}/${month}/${year}`;
     };
 
-    // Use AppointmentState
-    const { appointments, handleGetAppointments, error, loading, handleSendSocketEventAppointment } = useAppointment();
+    // Use AppointmentContext instead of hook
+    const { appointments, handleGetAppointments, error, loading, handleSendSocketEventAppointment, refresh } = useAppointmentContext();
 
     // Hàm chuyển đổi BookingState sang EventSocketAppointment
     const handleBookingSubmit = (bookingData: CreateAppointmentRequest) => {
@@ -126,7 +126,7 @@ const AppointmentTimelineScreen: React.FC = () => {
             console.log("🧹 [Cleanup] Timeout cleared");
             clearTimeout(timeoutId);
         };
-    }, [appointmentRequest]);
+    }, [appointmentRequest, refresh]);
 
     const renderAppointment = ({ item, index }: { item: Appointment; index: number }) => (
         <AppointmentCard
@@ -294,7 +294,10 @@ const AppointmentTimelineScreen: React.FC = () => {
                             <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>
                     </View>
-                    <BookingAppointment handleBooking={handleBookingSubmit} />
+                    <BookingAppointment
+                        handleBooking={handleBookingSubmit}
+                        onClose={() => setShowBookingModal(false)}
+                    />
                 </View>
             </Modal>
 

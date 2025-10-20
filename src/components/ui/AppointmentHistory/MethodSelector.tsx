@@ -6,7 +6,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { ConsultationType } from '../../../types/appointment';
+import { ConsultationType, ConsultationTypeLabels } from '../../../types/appointment';
 import { CONSULTATION_TYPE_ICONS } from '../../../constants/bookingData';
 
 interface MethodSelectorProps {
@@ -45,7 +45,7 @@ const MethodSelector: React.FC<MethodSelectorProps> = ({
                                 />
                             </View>
                             <Text style={[styles.methodName, isSelected && styles.selectedText]}>
-                                {method}
+                                {ConsultationTypeLabels[method]}
                             </Text>
                         </TouchableOpacity>
                     );
