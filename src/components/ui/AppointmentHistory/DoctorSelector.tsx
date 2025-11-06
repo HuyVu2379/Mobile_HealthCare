@@ -6,12 +6,12 @@ import {
     StyleSheet,
     Image,
 } from 'react-native';
-import { DoctorClientResponse } from '../../../types/appointment';
+import { Doctor } from '../../../types/appointment';
 
 interface DoctorSelectorProps {
-    doctors: DoctorClientResponse[];
-    selectedDoctor: DoctorClientResponse | null;
-    onDoctorSelect: (doctor: DoctorClientResponse) => void;
+    doctors: Doctor[];
+    selectedDoctor: Doctor | null;
+    onDoctorSelect: (doctor: Doctor) => void;
 }
 
 const DoctorSelector: React.FC<DoctorSelectorProps> = ({
@@ -19,7 +19,7 @@ const DoctorSelector: React.FC<DoctorSelectorProps> = ({
     selectedDoctor,
     onDoctorSelect,
 }) => {
-    const renderDoctorItem = (item: DoctorClientResponse) => {
+    const renderDoctorItem = (item: Doctor) => {
         const isSelected = selectedDoctor?.doctorId === item.doctorId;
 
         return (
@@ -40,11 +40,28 @@ const DoctorSelector: React.FC<DoctorSelectorProps> = ({
                     </View>
                     <View style={styles.doctorDetails}>
                         <Text style={[styles.doctorName, isSelected && styles.selectedText]}>
-                            {item.fullName}
+                            {String(item.fullName)}
                         </Text>
                         <Text style={[styles.doctorSpecialty, isSelected && styles.selectedSpecialtyText]}>
-                            {item.specialty || 'Chưa cập nhật'}
+                            {String(item.specialty) || 'Chưa cập nhật'}
                         </Text>
+                        {item.clinicAddress && (
+                            <Text style={styles.clinicAddress} numberOfLines={1}>
+                                Địa chỉ: {String(item.clinicAddress)}
+                            </Text>
+                        )}
+                        <View style={styles.extraInfo}>
+                            {item.examinationFee && (
+                                <Text style={styles.fee}>
+                                    Giá khám: {Number(item.examinationFee).toLocaleString('vi-VN')} VNĐ
+                                </Text>
+                            )}
+                            {item.rating && (
+                                <Text style={styles.rating}>
+                                    ⭐ {Number(item.rating)}
+                                </Text>
+                            )}
+                        </View>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -138,6 +155,22 @@ const styles = StyleSheet.create({
     selectedSpecialtyText: {
         color: '#555',
     },
+    clinicAddress: {
+        fontSize: 13,
+        color: '#666',
+        marginBottom: 6,
+    },
+    extraInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginTop: 4,
+    },
+    fee: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#4CAF50',
+    },
     ratingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -147,9 +180,9 @@ const styles = StyleSheet.create({
         marginRight: 4,
     },
     rating: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#333',
+        color: '#FF9800',
     },
 });
 

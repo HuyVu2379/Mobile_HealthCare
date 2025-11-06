@@ -1,54 +1,198 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import AppointmentIcon from './AppointmentIcon';
 import AppointmentStatus from './AppointmentStatus';
 import AppointmentActions from './AppointmentActions';
-import { Appointment, AppointmentStatusEnum, ConsultationType, ConsultationTypeLabels, AppointmentStatusLabels } from '../../../types/appointment';
+import { Appointment, AppointmentStatusEnum, ConsultationType, ConsultationTypeLabels, AppointmentStatusLabels, Room, RoomStatus, EventSocketAppointment, AppointmentAction } from '../../../types/appointment';
+import { useAppointmentContext } from '../../../contexts/AppointmentContext';
 
 interface AppointmentCardProps {
     appointment: Appointment;
     isFirst: boolean;
     isLast: boolean;
+    rooms: Room[];
+    userRole?: string; // Thêm prop để xác định role của user
+    onReschedule?: (appointment: Appointment) => void; // Callback để xử lý đổi lịch
 }
 
 const AppointmentCard: React.FC<AppointmentCardProps> = ({
     appointment,
     isFirst,
-    isLast
+    isLast,
+    rooms,
+    userRole,
+    onReschedule
 }) => {
+    const navigation = useNavigation();
+    const { handleSendSocketEventAppointment } = useAppointmentContext();
+
     // Debug: In ra giá trị để kiểm tra
     console.log('Appointment data:', {
         consultationType: appointment.consultationType,
         status: appointment.status,
-        addressDetail: appointment.addressDetail
+        addressDetail: appointment.addressDetail,
+        userRole
     });
 
-    const actions: Array<{
-        type: 'reschedule' | 'cancel' | 'join';
-        label: string;
-        onPress: () => void;
-    }> = [{
-        type: 'reschedule',
-        label: 'Đổi lịch',
-        onPress: () => console.log('Reschedule Appointment Pressed'),
-    },
-    {
-        type: 'cancel',
-        label: 'Hủy lịch',
-        onPress: () => console.log('Cancel Appointment Pressed'),
-    }];
+    // Tìm room tương ứng với appointmentId
+    const correspondingRoom = rooms.find(room => room.appointmentId === appointment.appointmentId);
+    const isRoomActive = correspondingRoom?.status === RoomStatus.ACTIVE;
+
+    console.log('Room check:', {
+        appointmentId: appointment.appointmentId,
+        room: correspondingRoom,
+        isRoomActive
+    });
+
+    // Handler để hủy lịch hẹn
+    const handleCancelAppointment = () => {
+        Alert.alert(
+            'Xác nhận hủy lịch',
+            'Bạn có chắc chắn muốn hủy lịch hẹn này không?',
+            [
+                {
+                    text: 'Không',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Có',
+                    onPress: () => {
+                        const eventData: EventSocketAppointment = {
+                            appointmentId: appointment.appointmentId,
+                            patientId: appointment.patient.userId,
+                            doctorId: null,
+                            event: 'CANCEL_APPOINTMENT' as any,
+                            status: null,
+                            createAppointmentRequest: null,
+                            updateAppointmentRequest: null,
+                        };
+
+                        console.log('🚫 Canceling appointment:', eventData);
+                        handleSendSocketEventAppointment(eventData);
+                    }
+                }
+            ]
+        );
+    };
+
+    // Kiểm tra xem appointmentDate có trước ngày hiện tại không
+    const isPastAppointment = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+        let appointmentDateObj: Date;
+
+        // Kiểm tra format của appointmentDate
+        if (appointment.appointmentDate.includes('-')) {
+            // Format: yyyy-MM-dd hoặc yyyy-M-d
+            const dateParts = appointment.appointmentDate.split('-');
+            if (dateParts.length === 3) {
+                appointmentDateObj = new Date(
+                    parseInt(dateParts[0]), // year
+                    parseInt(dateParts[1]) - 1, // month (0-indexed)
+                    parseInt(dateParts[2]) // day
+                );
+            } else {
+                return false;
+            }
+        } else if (appointment.appointmentDate.includes('/')) {
+            // Format: dd/MM/yyyy hoặc d/M/yyyy
+            const dateParts = appointment.appointmentDate.split('/');
+            if (dateParts.length === 3) {
+                appointmentDateObj = new Date(
+                    parseInt(dateParts[2]), // year
+                    parseInt(dateParts[1]) - 1, // month (0-indexed)
+                    parseInt(dateParts[0]) // day
+                );
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        appointmentDateObj.setHours(0, 0, 0, 0);
+
+        console.log('📅 Date comparison:', {
+            appointmentDate: appointment.appointmentDate,
+            appointmentDateObj: appointmentDateObj.toISOString(),
+            today: today.toISOString(),
+            isPast: appointmentDateObj < today
+        });
+
+        return appointmentDateObj < today;
+    };
 
     // So sánh với cả enum value và string key từ backend
     const consultationTypeStr = String(appointment.consultationType);
     const statusStr = String(appointment.status);
 
-    if ((consultationTypeStr === ConsultationType.ONLINE_CONSULTATION || consultationTypeStr === 'ONLINE_CONSULTATION') &&
-        (statusStr === AppointmentStatusEnum.CONFIRMED || statusStr === 'CONFIRMED')) {
-        actions.unshift({
-            type: 'join',
-            label: 'Tham gia cuộc hẹn',
-            onPress: () => console.log('Join Appointment Pressed'),
+    // Kiểm tra nếu là lịch hẹn đã hủy hoặc là lịch hẹn trong quá khứ
+    const isCanceled = statusStr === AppointmentStatusEnum.CANCELED || statusStr === 'CANCELED';
+    const isPast = isPastAppointment();
+    const shouldHideActions = isCanceled || isPast;
+
+    // Handler để đổi lịch
+    const handleRescheduleAppointment = () => {
+        if (onReschedule) {
+            onReschedule(appointment);
+        } else {
+            console.log('⚠️ onReschedule callback not provided');
+        }
+    };
+
+    const actions: Array<{
+        type: 'reschedule' | 'cancel' | 'join';
+        label: string;
+        onPress: () => void;
+        disabled?: boolean;
+    }> = shouldHideActions ? [] : [{
+        type: 'reschedule',
+        label: 'Đổi lịch',
+        onPress: handleRescheduleAppointment,
+    },
+    {
+        type: 'cancel',
+        label: 'Hủy lịch',
+        onPress: handleCancelAppointment,
+    }];
+
+    // Handler để tham gia video call
+    const handleJoinVideoCall = () => {
+        const roomId = correspondingRoom?.room_id || `appointment-${appointment.appointmentId}`;
+
+        console.log('🎥 Joining video call:', {
+            appointmentId: appointment.appointmentId,
+            roomId,
+            userRole
         });
+
+        // Navigate to VideoCallScreen với mode join và roomId
+        (navigation.navigate as any)('VideoCall', {
+            mode: 'join',
+            roomId: roomId,
+            appointmentId: appointment.appointmentId,
+            doctorName: appointment.doctor.fullName,
+        });
+    };
+
+    // Chỉ thêm nút join nếu không bị ẩn actions và đáp ứng điều kiện
+    if (!shouldHideActions &&
+        (consultationTypeStr === ConsultationType.ONLINE_CONSULTATION || consultationTypeStr === 'ONLINE_CONSULTATION') &&
+        (statusStr === AppointmentStatusEnum.CONFIRMED || statusStr === 'CONFIRMED')) {
+
+        // Chỉ hiển thị nút join cho bệnh nhân
+        const isPatient = userRole === 'PATIENT' || userRole === 'patient';
+
+        if (isPatient) {
+            actions.unshift({
+                type: 'join',
+                label: 'Tham gia cuộc hẹn',
+                onPress: handleJoinVideoCall,
+                disabled: !isRoomActive, // Disable nếu room không phải ACTIVE
+            });
+        }
     }
 
     return (
@@ -90,7 +234,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
                     </View>
                 )}
 
-                <AppointmentActions actions={actions} />
+                {actions.length > 0 && <AppointmentActions actions={actions} />}
             </View>
         </View>
     );

@@ -56,8 +56,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 dispatch(setAccessToken(token));
                 dispatch(setRefreshToken(refresh));
 
-                // Get user info after successful login
-                const userData = await getCurrentUser();
+                // userData đã được lưu vào Redux store trong login() service
+                const userData = response.userData;
                 if (userData) {
                     console.log('🔐 Login successful, connecting to WebSocket...');
                     // Connect to WebSocket after successful login
@@ -86,10 +86,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             Toast.show({
                 type: 'error',
                 text1: 'Đăng nhập thất bại',
-                text2: error.message || 'Có lỗi xảy ra'
+                text2: error.message || error?.data?.message || 'Có lỗi xảy ra'
             });
         }
-    }, [dispatch, getCurrentUser, connect, navigation]);
+    }, [dispatch, connect, navigation, authenticate]);
 
     const handleVerifyOTP = useCallback(async (email: string, otp: string) => {
         try {

@@ -44,18 +44,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
         try {
             setConnectionStatus('connecting');
-            console.log('🔌 Connecting to WebSocket...', SOCKET_CONFIG.DEFAULT_URL);
             ws.current = new WebSocket(SOCKET_CONFIG.DEFAULT_URL);
 
             ws.current.onopen = () => {
-                console.log('✅ WebSocket connected successfully');
+                console.log('✅ WebSocket connected');
                 setIsConnected(true);
                 setConnectionStatus('connected');
                 reconnectAttempts.current = 0;
 
                 // Auto-authenticate if userId is pending
                 if (pendingUserId.current) {
-                    console.log('🔐 Auto-authenticating with pending userId:', pendingUserId.current);
                     send(SOCKET_ACTIONS.AUTHENTICATION, { userId: pendingUserId.current });
                 }
             };
@@ -63,7 +61,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             ws.current.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-                    console.log('📩 WebSocket message received:', message);
                     setLastMessage(message);
 
                     // Notify all subscribers
@@ -86,15 +83,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             };
 
             ws.current.onclose = (event) => {
-                console.log('🔌 WebSocket connection closed', event.code, event.reason);
                 setIsConnected(false);
                 setConnectionStatus('disconnected');
 
                 // Auto reconnect if not manually closed
                 if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
                     reconnectAttempts.current++;
-                    console.log(`🔄 Attempting to reconnect... (${reconnectAttempts.current}/${maxReconnectAttempts})`);
-
                     reconnectTimeoutRef.current = setTimeout(() => {
                         connect();
                     }, 3000 * reconnectAttempts.current);
@@ -107,8 +101,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     }, []);
 
     const disconnect = useCallback(() => {
-        console.log('🔌 Manually disconnecting WebSocket...');
-
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
@@ -132,14 +124,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             };
 
             try {
-                const jsonPayload = JSON.stringify(payload);
-                console.log('📤 Sending WebSocket message:', jsonPayload);
-                ws.current.send(jsonPayload);
+                ws.current.send(JSON.stringify(payload));
             } catch (error) {
                 console.error('Failed to send WebSocket message:', error);
             }
-        } else {
-            console.warn('⚠️ WebSocket is not connected. Cannot send message:', action);
         }
     }, []);
 
@@ -153,14 +141,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     }, []);
 
     const authenticate = useCallback((userId: string) => {
-        console.log('🔐 Authenticating user:', userId);
         pendingUserId.current = userId;
 
         if (isConnected) {
             send(SOCKET_ACTIONS.AUTHENTICATION, { userId });
             setIsAuthenticated(true);
-        } else {
-            console.log('⏳ WebSocket not connected yet, will authenticate when connected');
         }
     }, [isConnected, send]);
 

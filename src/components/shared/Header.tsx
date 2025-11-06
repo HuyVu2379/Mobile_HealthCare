@@ -5,9 +5,11 @@ import { theme } from '../../theme';
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import ROUTING from '../../constants/routing';
 import { useSelector } from 'react-redux';
+import { useAuthContext } from '../../contexts';
 const Header: React.FC = () => {
     const navigation = useNavigation<NavigationProp<ParamListBase>>();
     const { isLoggedIn } = useSelector((state: any) => state.user);
+    const { handleLogout } = useAuthContext();
     return (
         <View style={styles.container}>
             <View style={[theme.layout.dflexRow, { gap: 10 }]}>
@@ -20,8 +22,8 @@ const Header: React.FC = () => {
                         <Text style={styles.buttonLoginText}>Đăng nhập</Text>
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity onPress={() => navigation.navigate(ROUTING.PROFILE)} style={styles.buttonLogin}>
-                        <Text style={styles.buttonLoginText}>Trang cá nhân</Text>
+                    <TouchableOpacity onPress={handleLogout} style={styles.buttonLogout}>
+                        <Text style={styles.buttonLogoutText}>Đăng xuất</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -46,6 +48,17 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius['2xl'],
     },
     buttonLoginText: {
+        color: theme.colors.white,
+    },
+    buttonLogout: {
+        width: 120,
+        height: 40,
+        backgroundColor: theme.colors.error?.[600] || '#DC2626',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: theme.borderRadius['2xl'],
+    },
+    buttonLogoutText: {
         color: theme.colors.white,
     }
 })

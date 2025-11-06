@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { getAppointment, getDoctorByDateAndTimeSlot } from '../services/schedule.service';
-import { Appointment, DoctorClientResponse, EventSocketAppointment, GetAppointmentRequest } from '../types/appointment';
+import { Appointment, Doctor, EventSocketAppointment, GetAppointmentRequest } from '../types/appointment';
 import { useWebSocketContext } from './WebSocketContext';
 import { SOCKET_ACTIONS } from '../constants/eventSocket';
 import { AppointmentAction, AppointmentActionLabels } from '../types/appointment';
@@ -10,10 +10,10 @@ interface AppointmentContextType {
     appointments: Appointment[];
     loading: boolean;
     error: string | null;
-    doctors: DoctorClientResponse[];
+    doctors: Doctor[];
     refresh: boolean;
     handleGetAppointments: (req: GetAppointmentRequest) => Promise<void>;
-    handleSendSocketEventAppointment: (data: EventSocketAppointment) => void;
+    handleSendSocketEventAppointment: (data: EventSocketAppointment, onSuccess?: () => void) => void;
     handleGetDoctorByDateAndTimeSlot: (date: string, timeSlotId: number) => Promise<void>;
 }
 
@@ -27,8 +27,9 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [doctors, setDoctors] = useState<DoctorClientResponse[]>([]);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [refresh, setRefresh] = useState<boolean>(false);
+    const [pendingCallbacks, setPendingCallbacks] = useState<Map<string, () => void>>(new Map());
 
     const { isConnected: connected, send, subscribe } = useWebSocketContext();
 
@@ -63,6 +64,33 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
                             text2: messageData.message || "Lịch hẹn đã được cập nhật",
                         });
                         setRefresh(prev => !prev);
+
+                        // Execute pending callback if exists
+                        // Try with new appointmentId first, then fallback to 'new' for creation events
+                        const callbackKeyWithId = `${messageData.eventType}_${messageData.appointmentId}`;
+                        const callbackKeyNew = `${messageData.eventType}_new`;
+
+                        setPendingCallbacks(prev => {
+                            let callback = prev.get(callbackKeyWithId);
+                            let usedKey = callbackKeyWithId;
+
+                            // For new appointments, the key was stored with 'new'
+                            if (!callback && messageData.eventType === 'BOOKING_APPOINTMENT') {
+                                callback = prev.get(callbackKeyNew);
+                                usedKey = callbackKeyNew;
+                            }
+
+                            if (callback) {
+                                console.log("🎯 Executing success callback for:", usedKey);
+                                callback();
+                                const newMap = new Map(prev);
+                                newMap.delete(usedKey);
+                                return newMap;
+                            } else {
+                                console.log("⚠️ No callback found for keys:", callbackKeyWithId, "or", callbackKeyNew);
+                            }
+                            return prev;
+                        });
                     } else {
                         const eventLabel = messageData.eventType && AppointmentActionLabels[messageData.eventType as AppointmentAction]
                             ? AppointmentActionLabels[messageData.eventType as AppointmentAction]
@@ -72,6 +100,16 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
                             type: "error",
                             text1: `${eventLabel} thất bại`,
                             text2: messageData.message || messageData.error || "Có lỗi xảy ra, vui lòng thử lại",
+                        });
+
+                        // Clean up pending callback on failure - try both keys
+                        const callbackKeyWithId = `${messageData.eventType}_${messageData.appointmentId}`;
+                        const callbackKeyNew = `${messageData.eventType}_new`;
+                        setPendingCallbacks(prev => {
+                            const newMap = new Map(prev);
+                            newMap.delete(callbackKeyWithId);
+                            newMap.delete(callbackKeyNew);
+                            return newMap;
                         });
                     }
                     break;
@@ -103,9 +141,20 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
         }
     }, []);
 
-    const handleSendSocketEventAppointment = useCallback((data: EventSocketAppointment) => {
+    const handleSendSocketEventAppointment = useCallback((data: EventSocketAppointment, onSuccess?: () => void) => {
         console.log("📤 Sending appointment event:", data);
         send(SOCKET_ACTIONS.APPOINTMENT, data);
+
+        // Store callback if provided
+        if (onSuccess) {
+            const callbackKey = `${data.event}_${data.appointmentId || 'new'}`;
+            console.log("💾 Storing callback for:", callbackKey);
+            setPendingCallbacks(prev => {
+                const newMap = new Map(prev);
+                newMap.set(callbackKey, onSuccess);
+                return newMap;
+            });
+        }
     }, [send]);
 
     const handleGetDoctorByDateAndTimeSlot = useCallback(async (date: string, timeSlotId: number) => {
@@ -113,6 +162,8 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
         setError(null);
         try {
             const response = await getDoctorByDateAndTimeSlot(date, timeSlotId);
+            console.log("check doctor by date and time slot: ", response.data);
+
             setDoctors(response.data);
         } catch (err) {
             console.error("Failed to fetch doctors:", err);

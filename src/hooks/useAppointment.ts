@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAppointment, getDoctorByDateAndTimeSlot } from "../services/schedule.service"
-import { Appointment, DoctorClientResponse, EventSocketAppointment, GetAppointmentRequest } from "../types/appointment";
+import { Appointment, Doctor, EventSocketAppointment, GetAppointmentRequest } from "../types/appointment";
 import { useWebSocketContext } from "../contexts";
 import { SOCKET_ACTIONS } from "../constants/eventSocket";
 import { AppointmentAction, AppointmentActionLabels } from "../types/appointment";
@@ -10,7 +10,7 @@ const useAppointment = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [doctors, setDoctors] = useState<DoctorClientResponse[]>([]);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
     const { isConnected: connected, send, subscribe } = useWebSocketContext();
     const [refresh, setRefresh] = useState<boolean>(false);
 

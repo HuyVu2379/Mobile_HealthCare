@@ -1,27 +1,47 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import useHealthRecord from '../hooks/useHealthRecord';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store/store';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigations/type';
+import ROUTING from '../constants/routing';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const formatDateTime = (dateString: string) => {
+    try {
+        const date = new Date(dateString);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (error) {
+        return dateString;
+    }
+};
 
 const MedicalRecordScreen = () => {
-    // Mock data for medical records
-    const medicalRecords = [
-        {
-            id: 1,
-            date: '18/10/2025',
-            doctor: 'BS. Nguyễn Thị B',
-            diagnosis: 'Viêm họng cấp',
-            treatment: 'Kê đơn thuốc kháng sinh',
-            department: 'Tai Mũi Họng',
-        },
-        {
-            id: 2,
-            date: '12/10/2025',
-            doctor: 'BS. Trần Văn C',
-            diagnosis: 'Đau đầu mãn tính',
-            treatment: 'Thuốc giảm đau, nghỉ ngơi',
-            department: 'Thần kinh',
-        },
-    ];
+    const { handleGetMedicalRecordByPatient, medicalRecords } = useHealthRecord();
+    const user = useSelector((state: RootState) => state.user.user);
+    const navigation = useNavigation<NavigationProp>();
+
+    useEffect(() => {
+        const fetchMedicalRecords = async () => {
+            const patientId = user?.userId || 'patient-123';
+            await handleGetMedicalRecordByPatient(patientId);
+        };
+        fetchMedicalRecords();
+    }, [user?.userId]);
+
+    const handleRecordPress = (record: any) => {
+        navigation.navigate(ROUTING.MEDICAL_RECORD_DETAIL, { record });
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,16 +52,21 @@ const MedicalRecordScreen = () => {
             <ScrollView style={styles.scrollView}>
                 <View style={styles.content}>
                     {medicalRecords.map((record) => (
-                        <View key={record.id} style={styles.recordCard}>
+                        <TouchableOpacity
+                            key={String(record.recordId)}
+                            style={styles.recordCard}
+                            onPress={() => handleRecordPress(record)}
+                            activeOpacity={0.7}
+                        >
                             <View style={styles.recordHeader}>
-                                <Text style={styles.recordDate}>{record.date}</Text>
-                                <Text style={styles.department}>{record.department}</Text>
+                                <Text style={styles.recordDate}>{formatDateTime(String(record.createdAt))}</Text>
+                                <Text style={styles.department}>{record.serviceName}</Text>
                             </View>
 
                             <View style={styles.recordBody}>
                                 <View style={styles.infoRow}>
                                     <Text style={styles.label}>Bác sĩ:</Text>
-                                    <Text style={styles.value}>{record.doctor}</Text>
+                                    <Text style={styles.value}>{record.doctorName}</Text>
                                 </View>
 
                                 <View style={styles.infoRow}>
@@ -54,7 +79,11 @@ const MedicalRecordScreen = () => {
                                     <Text style={styles.value}>{record.treatment}</Text>
                                 </View>
                             </View>
-                        </View>
+
+                            <View style={styles.viewDetailRow}>
+                                <Text style={styles.viewDetailText}>Xem chi tiết →</Text>
+                            </View>
+                        </TouchableOpacity>
                     ))}
 
                     <View style={styles.placeholder}>
@@ -139,6 +168,18 @@ const styles = StyleSheet.create({
         color: '#000000',
         flex: 1,
         fontWeight: '500',
+    },
+    viewDetailRow: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
+        alignItems: 'flex-end',
+    },
+    viewDetailText: {
+        fontSize: 14,
+        color: '#007AFF',
+        fontWeight: '600',
     },
     placeholder: {
         marginTop: 20,

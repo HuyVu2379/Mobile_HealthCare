@@ -6,6 +6,7 @@ interface AppointmentActionsProps {
         type: 'reschedule' | 'cancel' | 'join';
         label: string;
         onPress: () => void;
+        disabled?: boolean;
     }>;
 }
 
@@ -47,6 +48,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({ actions }) => {
         <View style={styles.container}>
             {actions.map((action, index) => {
                 const buttonStyle = getButtonStyle(action.type);
+                const isDisabled = action.disabled || false;
 
                 return (
                     <TouchableOpacity
@@ -58,11 +60,17 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({ actions }) => {
                                 borderColor: buttonStyle.borderColor,
                                 borderWidth: buttonStyle.borderWidth,
                                 marginRight: index < actions.length - 1 ? 8 : 0,
-                            }
+                            },
+                            isDisabled && styles.disabledButton
                         ]}
                         onPress={action.onPress}
+                        disabled={isDisabled}
                     >
-                        <Text style={[styles.buttonText, { color: buttonStyle.textColor }]}>
+                        <Text style={[
+                            styles.buttonText,
+                            { color: buttonStyle.textColor },
+                            isDisabled && styles.disabledText
+                        ]}>
                             {action.label}
                         </Text>
                     </TouchableOpacity>
@@ -88,6 +96,13 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 14,
         fontWeight: '500',
+    },
+    disabledButton: {
+        backgroundColor: '#E0E0E0',
+        opacity: 0.6,
+    },
+    disabledText: {
+        color: '#999999',
     },
 });
 

@@ -62,8 +62,13 @@ axiosConfig.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Kiểm tra nếu lỗi 401 (Unauthorized) và chưa retry
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Bỏ qua refresh token cho các endpoint auth (login, register, verify-account)
+        const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+            originalRequest.url?.includes('/auth/register') ||
+            originalRequest.url?.includes('/auth/verify-account');
+
+        // Kiểm tra nếu lỗi 401 (Unauthorized) và chưa retry và KHÔNG phải auth endpoint
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             if (isRefreshing) {
                 // Nếu đang refresh token, thêm request vào queue
                 return new Promise((resolve, reject) => {
@@ -123,7 +128,16 @@ axiosConfig.interceptors.response.use(
             }
         }
 
-        // Nếu lỗi ở tầng HTTP khác (timeout, 500, không connect được…)
+        // Nếu lỗi ở tầng HTTP khác (timeout, 500, không connect được…) 
+        // hoặc lỗi 401 từ auth endpoints, trả về error với response data
+        if (error.response?.data) {
+            return Promise.reject({
+                ...error.response.data,
+                statusCode: error.response.status,
+                status: error.response.status
+            });
+        }
+
         return Promise.reject(error);
     },
 );

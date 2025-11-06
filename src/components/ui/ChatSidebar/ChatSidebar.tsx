@@ -176,7 +176,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = React.memo(({ onClose }) => {
                     </View>
                 ) : (
                     <FlatList
-                        data={groups}
+                        data={groups.filter(g => g.groupId.includes('-AI') && g.groupName?.includes("AI"))}
                         renderItem={renderGroupItem}
                         keyExtractor={getItemKey}
                         showsVerticalScrollIndicator={false}

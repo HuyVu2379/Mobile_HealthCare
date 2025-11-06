@@ -1,3 +1,4 @@
+import { DoctorScheduleResponse } from "../types/appointment";
 import axiosConfig from "./axios.config";
 const api_url_schedule = 'appointments';
 const api_url_time_slots = 'time-slots';
@@ -25,6 +26,15 @@ export const getDoctorByDateAndTimeSlot = async (date: string, timeSlotId: numbe
         params: {
             date,
             slotId: timeSlotId
+        }
+    });
+};
+
+export const getDoctorScheduleByDoctorIdAndDate = async (doctorId: string, date: string): Promise<DoctorScheduleResponse> => {
+    return await axiosConfig.get(`${api_url_doctor_schedules}/getDoctorScheduleByDoctorIdAndDate`, {
+        params: {
+            doctorId,
+            date
         }
     });
 };

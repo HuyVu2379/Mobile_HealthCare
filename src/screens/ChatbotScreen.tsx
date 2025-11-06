@@ -19,13 +19,13 @@ import { useSelector } from 'react-redux';
 import { Suggestions, ChatInput, ChatSidebar, MessageItem } from '../components';
 import { SuggestionItem } from '../types/chat';
 import { RootState } from '../store/store';
-import { useChat } from '../hooks/useChat';
+import { useChatContext } from '../contexts';
 import { useWebSocketContext } from '../contexts/WebSocketContext';
 // Memoized ChatbotScreen component for better performance
 const ChatbotScreen = React.memo(() => {
     const { user } = useSelector((state: RootState) => state.user);
     const { isConnected: connected } = useWebSocketContext();
-    const { createAIGroupIfNeeded, currentGroupAIId, currentGroupId, messages, initializeAIGroup, sendMessage, askAIQuestion, error, groups } = useChat(user?.userId || "");
+    const { createAIGroupIfNeeded, currentGroupAIId, currentGroupId, messages, initializeAIGroup, sendMessage, askAIQuestion, error, groups } = useChatContext();
 
     // States
     const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -57,7 +57,6 @@ const ChatbotScreen = React.memo(() => {
     // Initialize AI group from storage when component mounts
     useEffect(() => {
         const initializeOnMount = async () => {
-            console.log('🔄 Initializing AI group from storage on component mount');
             await initializeAIGroup();
             setIsInitialized(true);
         };
@@ -68,7 +67,6 @@ const ChatbotScreen = React.memo(() => {
     // Initialize AI group when user is available, WebSocket is connected, and initialization is complete
     useEffect(() => {
         if (user && connected && isInitialized && !currentGroupAIId) {
-            console.log('🤖 No existing AI group found, creating new one for user:', user.userId);
             createAIGroupIfNeeded(user.userId, user.fullName || user.userId);
         }
     }, [user, connected, isInitialized, currentGroupAIId, createAIGroupIfNeeded]);
@@ -89,7 +87,6 @@ const ChatbotScreen = React.memo(() => {
 
         const now = Date.now();
         if (lastSendRef.current && lastSendRef.current.text === trimmed && (now - lastSendRef.current.ts) < 1000) {
-            console.warn('⚠️ Duplicate message blocked:', trimmed);
             return; // ⛔ chặn gọi đôi trong ~1s
         }
         lastSendRef.current = { text: trimmed, ts: now };

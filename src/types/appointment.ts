@@ -23,14 +23,18 @@ export interface Appointment {
 }
 
 export interface Doctor {
-    doctorId: String;
-    email: String;
-    fullName: String;
-    phoneNumber: String;
-    speciatly: String;
-    avatarUrl: String;
-    clinicAddress: String;
-    experienceYears: Number;
+    doctorId: string;
+    email: string;
+    fullName: string;
+    phoneNumber: string;
+    specialty: string;
+    avatarUrl: string;
+    clinicAddress: string;
+    experienceYears: number;
+    examinationFee: number;
+    rating: number;
+    bio: string;
+    scheduleId: string;
 }
 
 export interface Patient {
@@ -91,8 +95,8 @@ export interface EventSocketAppointment {
     doctorId: String | null;
     event: ScheduleSocketEvent | null;
     status: AppointmentStatusEnum | null;
-    createAppointmentRequest: any | null;
-    updateAppointmentRequest: any | null;
+    createAppointmentRequest: CreateAppointmentRequest | null;
+    updateAppointmentRequest: UpdateAppointmentRequest | null;
 }
 
 enum ScheduleSocketEvent {
@@ -148,3 +152,43 @@ export const AppointmentActionLabels: Record<AppointmentAction, string> = {
     [AppointmentAction.RESCHEDULE_APPOINTMENT]: "Lên lịch lại cuộc hẹn",
     [AppointmentAction.CANCEL_APPOINTMENT]: "Hủy cuộc hẹn"
 };
+
+export enum RoomStatus {
+    CREATED = "CREATED",
+    ACTIVE = "ACTIVE",
+    INACTIVE = "INACTIVE"
+}
+export interface Room {
+    room_id: String;
+    room_name: String;
+    appointmentId: String;
+    doctorId: String;
+    patientId: String;
+    status: RoomStatus;
+    createdAt: String;
+    updatedAt: String;
+}
+
+export interface CreateRoomRequest {
+    room_name: String;
+    appointmentId: String;
+    doctorId: String;
+    patientId: String;
+    status: RoomStatus;
+}
+
+export interface DoctorScheduleResponse {
+    scheduleId: string;
+    doctorId: string;
+    weekDay: string;
+    workDate: string;
+    timeSlots: TimeSlotResponse[];
+}
+
+export interface TimeSlotResponse {
+    slotId: number;
+    startTime: string;
+    endTime: string;
+    createdAt: string;
+    updatedAt: string;
+}

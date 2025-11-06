@@ -4,7 +4,7 @@ import { LoginRequest } from "../types/IUser";
 import { CustomApiResponse, LoginResponse } from "../types/api";
 import { TokenService } from "./token.service";
 import store from "../store/store";
-import { clearTokens, setTokens } from "../store/slices/userSlice";
+import { clearTokens, setTokens, setMe } from "../store/slices/userSlice";
 export const login = async (data: LoginRequest): Promise<any> => {
     const response = await axiosConfig.post(`${api_url}/login`, data);
     // Nếu login thành công và có token, lưu vào AsyncStorage
@@ -14,6 +14,21 @@ export const login = async (data: LoginRequest): Promise<any> => {
             accessToken: response.data.accessToken,
             refreshToken: response.data.refreshToken,
         }));
+
+        // Gọi getMe để lấy thông tin user sau khi login thành công
+        try {
+            const userResponse = await getMe();
+            if (userResponse.statusCode === 200 && userResponse.data) {
+                // Lưu user info vào Redux store luôn
+                store.dispatch(setMe(userResponse.data));
+                return {
+                    ...response,
+                    userData: userResponse.data
+                };
+            }
+        } catch (error) {
+            console.error('Error getting user info after login:', error);
+        }
     }
 
     return response;
@@ -62,9 +77,7 @@ export const logout = async (): Promise<void> => {
         // Gọi API logout nếu có
         const refreshToken = await TokenService.getRefreshToken();
         if (refreshToken) {
-            await axiosConfig.post(`${api_url}/logout`, {
-                refreshToken: refreshToken
-            });
+            await axiosConfig.post(`${api_url}/logout?refreshToken=${refreshToken}`);
         }
     } catch (error) {
         console.error('Error calling logout API:', error);

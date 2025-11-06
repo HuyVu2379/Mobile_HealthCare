@@ -15,7 +15,8 @@ import { BookingAppointment } from '../components/ui/AppointmentHistory';
 import { useAppointmentContext } from '../contexts';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Appointment, AppointmentStatusEnum, CreateAppointmentRequest } from '../types/appointment';
-
+import { useChatContext } from '../contexts';
+import { useRoom } from '../hooks/useRoom';
 const AppointmentTimelineScreen: React.FC = () => {
     const { user } = useAuthContext();
     const isFirstMount = useRef(true);
@@ -23,6 +24,8 @@ const AppointmentTimelineScreen: React.FC = () => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     const [selectedType, setSelectedType] = useState('ALL');
+    const { createGroup } = useChatContext();
+    const { rooms, handleGetRooms } = useRoom();
     const [appointmentRequest, setAppointmentRequest] = useState({
         patientId: user?.userId || '',
         consultationType: 'ALL',
@@ -33,6 +36,8 @@ const AppointmentTimelineScreen: React.FC = () => {
     });
     // Modal state for booking
     const [showBookingModal, setShowBookingModal] = useState(false);
+    const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+    const [appointmentToReschedule, setAppointmentToReschedule] = useState<Appointment | null>(null);
 
     // DatePicker states
     const [fromDateObj, setFromDateObj] = useState(new Date());
@@ -61,7 +66,7 @@ const AppointmentTimelineScreen: React.FC = () => {
     const { appointments, handleGetAppointments, error, loading, handleSendSocketEventAppointment, refresh } = useAppointmentContext();
 
     // Hàm chuyển đổi BookingState sang EventSocketAppointment
-    const handleBookingSubmit = (bookingData: CreateAppointmentRequest) => {
+    const handleBookingSubmit = (bookingData: CreateAppointmentRequest, selectedDoctor: any) => {
         // Chuyển đổi dữ liệu từ BookingState sang EventSocketAppointment
         const eventData = {
             appointmentId: null,
@@ -83,7 +88,77 @@ const AppointmentTimelineScreen: React.FC = () => {
             updateAppointmentRequest: null,
         };
 
-        handleSendSocketEventAppointment(eventData as any);
+        handleSendSocketEventAppointment(eventData as any, () => {
+            // Callback này sẽ được gọi khi booking appointment thành công
+            console.log("✅ Booking appointment successful, creating chat group...");
+            if (bookingData.doctorId && user?.userId && selectedDoctor) {
+                console.log("check create group 1");
+                // Sử dụng setTimeout để tránh update state trong render cycle
+                setTimeout(() => {
+                    // Tạo group chat giữa bệnh nhân và bác sĩ với thông tin đầy đủ từ selectedDoctor
+                    createGroup({
+                        groupName: `Tư vấn - ${selectedDoctor.fullName || 'Bác sĩ'}`,
+                        appointmentId: bookingData.scheduleId?.toString() || '',
+                        members: [
+                            {
+                                userId: user.userId,
+                                fullName: user.fullName || 'Bệnh nhân',
+                                avatarUrl: user.avatarUrl || ''
+                            },
+                            {
+                                userId: selectedDoctor.doctorId,
+                                fullName: selectedDoctor.fullName || 'Bác sĩ',
+                                avatarUrl: selectedDoctor.avatarUrl || ''
+                            }
+                        ]
+                    });
+                    console.log("check create group 2");
+                }, 0);
+            }
+        });
+
+    };
+
+    // Hàm xử lý đổi lịch
+    const handleRescheduleSubmit = (bookingData: CreateAppointmentRequest, selectedDoctor: any) => {
+        if (!appointmentToReschedule) {
+            console.error('❌ No appointment to reschedule');
+            return;
+        }
+
+        // Tạo UpdateAppointmentRequest cho việc đổi lịch
+        const updateAppointmentRequest = {
+            appointmentId: String(appointmentToReschedule.appointmentId),
+            oldScheduleId: bookingData.scheduleId, // scheduleId từ lịch cũ (được lấy từ API)
+            newScheduleId: bookingData.scheduleId, // scheduleId mới (cùng bác sĩ nhưng khác lịch)
+            oldSlotId: appointmentToReschedule.timeSlot.slotId,
+            newSlotId: bookingData.slotId,
+        };
+
+        // Tạo EventSocketAppointment cho việc đổi lịch
+        const eventData = {
+            appointmentId: appointmentToReschedule.appointmentId,
+            patientId: user?.userId || null,
+            doctorId: bookingData.doctorId || null,
+            event: 'RESCHEDULE_APPOINTMENT' as any,
+            status: null,
+            createAppointmentRequest: null, // Set null khi đổi lịch theo yêu cầu
+            updateAppointmentRequest: updateAppointmentRequest,
+        };
+
+        console.log('🔄 Sending reschedule event:', eventData);
+
+        handleSendSocketEventAppointment(eventData as any, () => {
+            console.log("✅ Reschedule appointment successful");
+            // Không cần tạo group chat mới vì đã có group chat từ lần đặt trước
+        });
+    };
+
+    // Hàm mở modal đổi lịch
+    const handleOpenRescheduleModal = (appointment: Appointment) => {
+        console.log('🔄 Opening reschedule modal for:', appointment);
+        setAppointmentToReschedule(appointment);
+        setShowRescheduleModal(true);
     };
 
     // Update appointmentRequest when filters change
@@ -103,6 +178,7 @@ const AppointmentTimelineScreen: React.FC = () => {
     }, [fromDate, toDate, selectedType]);
 
     useEffect(() => {
+        handleGetRooms(user?.userId || null);
         // Gọi API ngay lập tức khi component mount lần đầu
         if (isInitialApiCall.current) {
             isInitialApiCall.current = false;
@@ -133,6 +209,9 @@ const AppointmentTimelineScreen: React.FC = () => {
             appointment={item}
             isFirst={index === 0}
             isLast={index === appointments.length - 1}
+            rooms={rooms}
+            userRole={user?.role}
+            onReschedule={handleOpenRescheduleModal}
         />
     );
 
@@ -297,6 +376,41 @@ const AppointmentTimelineScreen: React.FC = () => {
                     <BookingAppointment
                         handleBooking={handleBookingSubmit}
                         onClose={() => setShowBookingModal(false)}
+                    />
+                </View>
+            </Modal>
+
+            {/* Reschedule Modal */}
+            <Modal
+                visible={showRescheduleModal}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => {
+                    setShowRescheduleModal(false);
+                    setAppointmentToReschedule(null);
+                }}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Đổi lịch khám</Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShowRescheduleModal(false);
+                                setAppointmentToReschedule(null);
+                            }}
+                            style={styles.closeButton}
+                        >
+                            <Text style={styles.closeButtonText}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <BookingAppointment
+                        handleBooking={handleRescheduleSubmit}
+                        onClose={() => {
+                            setShowRescheduleModal(false);
+                            setAppointmentToReschedule(null);
+                        }}
+                        initialData={appointmentToReschedule}
+                        isReschedule={true}
                     />
                 </View>
             </Modal>

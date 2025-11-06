@@ -14,6 +14,10 @@ interface DateTimeSelectorProps {
     selectedTimeSlot: TimeSlot | null;
     onDateSelect: (date: Date) => void;
     onTimeSlotSelect: (timeSlot: TimeSlot) => void;
+    oldSlotId?: number; // ID của slot cũ khi đổi lịch
+    oldDate?: string; // Ngày cũ khi đổi lịch (format: yyyy-MM-dd hoặc dd/MM/yyyy)
+    isReschedule?: boolean; // Flag để biết đây là đổi lịch
+    availableSlotIds?: number[]; // Danh sách slot ID khả dụng của bác sĩ
 }
 
 const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
@@ -22,6 +26,10 @@ const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
     selectedTimeSlot,
     onDateSelect,
     onTimeSlotSelect,
+    oldSlotId,
+    oldDate,
+    isReschedule = false,
+    availableSlotIds = [],
 }) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -33,8 +41,34 @@ const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
         });
     };
 
+    // Kiểm tra xem ngày được chọn có phải là ngày cũ không
+    const isOldDate = () => {
+        if (!oldDate || !selectedDate) return false;
+
+        const selectedDateStr = formatDate(selectedDate);
+
+        // Parse oldDate (có thể là yyyy-MM-dd hoặc dd/MM/yyyy)
+        let oldDateFormatted = '';
+        if (oldDate.includes('-')) {
+            // Format: yyyy-MM-dd
+            const parts = oldDate.split('-');
+            oldDateFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else if (oldDate.includes('/')) {
+            // Format: dd/MM/yyyy
+            oldDateFormatted = oldDate;
+        }
+
+        return selectedDateStr === oldDateFormatted;
+    };
+
     const renderTimeSlot = (item: TimeSlot) => {
         const isSelected = selectedTimeSlot?.slotId === item.slotId;
+        const isOldSlot = oldSlotId !== undefined && item.slotId === oldSlotId && isOldDate();
+
+        // Kiểm tra xem slot có khả dụng không (chỉ khi đang đổi lịch)
+        const isSlotAvailable = !isReschedule || availableSlotIds.includes(item.slotId);
+
+        const isDisabled = isOldSlot || (isReschedule && !isSlotAvailable);
 
         return (
             <TouchableOpacity
@@ -42,18 +76,28 @@ const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
                 style={[
                     styles.timeButton,
                     isSelected && styles.selectedTimeButton,
+                    isOldSlot && styles.oldSlotButton,
+                    isDisabled && styles.disabledSlotButton,
                 ]}
-                onPress={() => onTimeSlotSelect(item)}
+                onPress={() => !isDisabled && onTimeSlotSelect(item)}
+                disabled={isDisabled}
             >
                 <Text
                     style={[
                         styles.timeText,
                         isSelected && styles.selectedTimeText,
-
+                        isOldSlot && styles.oldSlotText,
+                        isDisabled && styles.disabledSlotText,
                     ]}
                 >
                     {item.startTime} - {item.endTime}
                 </Text>
+                {isOldSlot && (
+                    <Text style={styles.oldSlotLabel}>Lịch cũ</Text>
+                )}
+                {isReschedule && !isSlotAvailable && !isOldSlot && (
+                    <Text style={styles.unavailableLabel}>Không khả dụng</Text>
+                )}
             </TouchableOpacity>
         );
     };
@@ -190,6 +234,17 @@ const styles = StyleSheet.create({
         borderColor: '#4285F4',
         borderWidth: 2,
     },
+    oldSlotButton: {
+        backgroundColor: '#FFF3E0',
+        borderColor: '#FF9800',
+        borderWidth: 2,
+        opacity: 0.7,
+    },
+    disabledSlotButton: {
+        backgroundColor: '#f5f5f5',
+        borderColor: '#e0e0e0',
+        opacity: 0.5,
+    },
     disabledTimeButton: {
         backgroundColor: '#f5f5f5',
         borderColor: '#e0e0e0',
@@ -201,6 +256,26 @@ const styles = StyleSheet.create({
     },
     selectedTimeText: {
         color: '#fff',
+    },
+    oldSlotText: {
+        color: '#E65100',
+        textDecorationLine: 'line-through',
+    },
+    oldSlotLabel: {
+        fontSize: 11,
+        color: '#E65100',
+        fontWeight: '600',
+        marginTop: 4,
+    },
+    disabledSlotText: {
+        color: '#999',
+        textDecorationLine: 'line-through',
+    },
+    unavailableLabel: {
+        fontSize: 11,
+        color: '#999',
+        fontWeight: '600',
+        marginTop: 4,
     },
     disabledTimeText: {
         color: '#999',

@@ -32,8 +32,8 @@ const gridData = [
         id: 4,
         routing: ROUTING.BOTTOM_TAB,
         imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400',
-        subtitle: 'Kết quả xét nghiệm',
-        title: 'Kiểm tra tức thì'
+        subtitle: 'Khám online',
+        title: 'Video call với bác sĩ'
     },
     {
         id: 5,
@@ -44,10 +44,10 @@ const gridData = [
     },
     {
         id: 6,
-        routing: ROUTING.SOCKET_TEST,
+        routing: ROUTING.CHAT_WITH_DOCTOR,
         imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400',
-        subtitle: 'Socket Test',
-        title: 'Kiểm tra kết nối Socket'
+        subtitle: 'Tư vấn trực tuyến',
+        title: 'Chat với bác sĩ đã hẹn'
     }
 ];
 

@@ -1,5 +1,5 @@
 import { SOCKET_ACTIONS } from "../constants/eventSocket"
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { CreateGroupRequest, SendMessageRequest, GetGroupsRequest, GetMessageRequest, MemberDTO, MessageResponse } from "../types";
 import { StorageService } from "../services/storage.service";
 import { useWebSocketContext } from "../contexts/WebSocketContext";
@@ -13,6 +13,10 @@ export const useChat = (userId: String) => {
     const [error, setError] = useState<string | null>(null);
     const [groups, setGroups] = useState<any[]>([]);
     const [isCreatingAIGroup, setIsCreatingAIGroup] = useState<boolean>(false);
+    const [groupExistsInfo, setGroupExistsInfo] = useState<string | null>(null);
+
+    // Use ref to track processed message IDs to prevent duplicates across re-renders
+    const processedMessageIds = useRef<Set<string>>(new Set());
 
     // Use shared WebSocket context
     const { isConnected: connected, send, subscribe } = useWebSocketContext();
@@ -22,13 +26,10 @@ export const useChat = (userId: String) => {
         try {
             const savedGroupId = await StorageService.getCurrentGroupAIId();
             if (savedGroupId) {
-                console.log('🔄 Initializing AI group from storage:', savedGroupId);
                 setCurrentGroupAIId(savedGroupId);
-            } else {
-                console.log('🔄 No AI group found in storage');
             }
         } catch (error) {
-            console.error('❌ Error initializing AI group:', error);
+            console.error('Error initializing AI group:', error);
         }
     }, []);
 
@@ -40,7 +41,6 @@ export const useChat = (userId: String) => {
     // Send authentication when connected and userId is available
     useEffect(() => {
         if (connected && userId) {
-            console.log('🔐 Sending authentication for user:', userId);
             send(SOCKET_ACTIONS.AUTHENTICATION, { userId });
         }
     }, [connected, userId, send]);
@@ -49,7 +49,6 @@ export const useChat = (userId: String) => {
     useEffect(() => {
         const activeGroupId = currentGroupAIId || currentGroupId;
         if (connected && activeGroupId) {
-            console.log('🚪 Joining group:', activeGroupId);
             send(SOCKET_ACTIONS.JOIN_GROUP, { groupId: activeGroupId });
         }
     }, [connected, currentGroupAIId, currentGroupId, send]);
@@ -57,44 +56,71 @@ export const useChat = (userId: String) => {
     // Subscribe to WebSocket messages
     useEffect(() => {
         const handleMessage = (data: any) => {
-            console.log("📩 Chat message received", data);
-
             // Handle different message formats - check if data has action or if it's the action itself
             const action = data.action || data;
             const messageData = data.data || data;
 
             switch (action) {
                 case SOCKET_ACTIONS.ERROR:
-                    console.log('❌ Error received:', messageData);
-                    setError(messageData.message || messageData || "Unknown error");
-                    setIsCreatingAIGroup(false); // Reset creating flag on error
+                    const errorMessage = messageData.message || messageData || "Unknown error";
+
+                    // Check if this is a "group already exists" notification
+                    if (typeof errorMessage === 'string' &&
+                        errorMessage.toLowerCase().includes('group with these members already exists')) {
+                        setGroupExistsInfo(errorMessage);
+                        setError(null); // Clear any error
+                        setIsCreatingAIGroup(false);
+
+                        // Auto-clear the info message after 5 seconds
+                        setTimeout(() => setGroupExistsInfo(null), 5000);
+                    } else {
+                        // This is a real error
+                        setError(errorMessage);
+                        setIsCreatingAIGroup(false);
+                    }
                     break;
                 case SOCKET_ACTIONS.GROUP.GET_GROUPS_RESPONSE:
-                    console.log('📁 Groups received:', messageData);
                     setGroups(messageData || []);
                     setLoading(false);
                     break;
                 case SOCKET_ACTIONS.GROUP.GET_MESSAGES_RESPONSE:
-                    console.log('📄 Messages history received:', messageData);
+                    // Clear processed IDs when loading new messages history
+                    processedMessageIds.current.clear();
+                    // Add all message IDs from history to processed set
+                    if (Array.isArray(messageData)) {
+                        messageData.forEach((msg: MessageResponse) => {
+                            const msgId = msg.messageId || msg.tempMessageId;
+                            if (msgId) {
+                                processedMessageIds.current.add(msgId.toString());
+                            }
+                        });
+                    }
                     setMessages(messageData || []);
                     setLoading(false);
                     break;
                 case SOCKET_ACTIONS.GROUP.MESSAGE_RECEIVED:
-                    console.log('📩 New message received:', messageData);
-                    // Check for duplicate messages before adding
+                    // Get unique identifier for this message
+                    const messageId = messageData.messageId || messageData.tempMessageId;
+                    const messageIdStr = messageId?.toString();
+
+                    // Check if we've already processed this message
+                    if (messageIdStr && processedMessageIds.current.has(messageIdStr)) {
+                        return;
+                    }
+
+                    // Add to processed set
+                    if (messageIdStr) {
+                        processedMessageIds.current.add(messageIdStr);
+                    }
+
+                    // Check for duplicate messages in current state (as backup)
                     setMessages(prev => {
-                        const messageId = messageData.messageId || messageData.tempMessageId;
                         const isDuplicate = prev.some(msg =>
                             (msg.messageId && msg.messageId === messageId) ||
-                            (msg.tempMessageId && msg.tempMessageId === messageId) ||
-                            (msg.content === messageData.content &&
-                                msg.senderId === messageData.senderId &&
-                                Math.abs(new Date(msg.sendAt || msg.createdAt).getTime() -
-                                    new Date(messageData.sendAt || messageData.createdAt).getTime()) < 1000)
+                            (msg.tempMessageId && msg.tempMessageId === messageId)
                         );
 
                         if (isDuplicate) {
-                            console.warn('⚠️ Duplicate message detected, skipping:', messageData);
                             return prev;
                         }
 
@@ -103,12 +129,10 @@ export const useChat = (userId: String) => {
                     });
                     break;
                 case SOCKET_ACTIONS.GROUP.GROUP_CREATED:
-                    console.log('✅ Group created:', messageData);
                     // Check if this is an AI group (memberIds includes "AI")
                     const memberIds = messageData.members?.map((member: MemberDTO) => member.userId) || messageData.memberIds || [];
                     if (memberIds.includes("AI")) {
                         const groupId = messageData.groupId?.toString() || messageData.id?.toString();
-                        console.log('✅ AI group created successfully:', groupId);
                         setCurrentGroupAIId(groupId);
                         setIsCreatingAIGroup(false); // Reset creating flag
                         // Persist to AsyncStorage
@@ -118,7 +142,6 @@ export const useChat = (userId: String) => {
                     setLoading(false);
                     break;
                 case SOCKET_ACTIONS.GROUP.GROUP_DELETED:
-                    console.log('🗑️ Group deleted:', messageData);
                     const deletedGroupId = messageData.groupId?.toString() || messageData.id?.toString();
                     // Filter out deleted group from groups list
                     setGroups(prev => prev.filter(group =>
@@ -138,7 +161,7 @@ export const useChat = (userId: String) => {
                     }
                     break;
                 default:
-                    console.log("⚠️ Unknown action", action, data);
+                    break;
             }
         };
 
@@ -152,8 +175,6 @@ export const useChat = (userId: String) => {
         const shouldCreate = force || (!currentGroupAIId && !isCreatingAIGroup);
 
         if (shouldCreate && connected && userId) {
-            console.log('🤖 Creating new AI group for user:', userId, force ? '(forced)' : '');
-
             // If forcing and there's an existing AI group, clear it first
             if (force && currentGroupAIId) {
                 StorageService.clearCurrentGroupAIId();
@@ -178,14 +199,6 @@ export const useChat = (userId: String) => {
                 ]
             });
             setLoading(true);
-        } else {
-            console.log('🤖 Skipping AI group creation:', {
-                hasCurrentGroupAIId: !!currentGroupAIId,
-                isCreatingAIGroup,
-                connected,
-                hasUserId: !!userId,
-                force
-            });
         }
     }, [currentGroupAIId, isCreatingAIGroup, connected, send]);
 
@@ -243,16 +256,19 @@ export const useChat = (userId: String) => {
 
     // Switch to a specific group and load its messages
     const switchToGroup = useCallback((groupId: string) => {
-        if (!connected || !groupId) return;
+        if (!connected || !groupId) {
+            return;
+        }
 
-        console.log('🔄 Switching to group:', groupId);
-
-        // Clear current messages
+        // Clear current messages and processed IDs
         setMessages([]);
+        processedMessageIds.current.clear();
+        setLoading(true);
 
         // Set the new current group (check if it's AI group)
-        const targetGroup = groups.find(group => group.groupId === groupId);
-        const isAIGroup = targetGroup?.memberIds?.includes('AI');
+        const targetGroup = groups.find(group => group.groupId?.toString() === groupId);
+        const isAIGroup = targetGroup?.members?.some((member: MemberDTO) => member.userId === 'AI') ||
+            targetGroup?.memberIds?.includes('AI');
 
         if (isAIGroup) {
             setCurrentGroupAIId(groupId);
@@ -282,7 +298,6 @@ export const useChat = (userId: String) => {
     useEffect(() => {
         const activeGroupId = currentGroupAIId || currentGroupId;
         if (activeGroupId && connected) {
-            console.log('📨 Auto-fetching messages for group:', activeGroupId);
             getMessages({ groupId: activeGroupId, page: 0, size: 50 });
         }
     }, [currentGroupId, currentGroupAIId, connected, getMessages]);
@@ -310,6 +325,8 @@ export const useChat = (userId: String) => {
         setMessages,
         joinGroup,
         deleteGroup,
-        switchToGroup
+        switchToGroup,
+        groupExistsInfo,
+        setGroupExistsInfo
     }
 }

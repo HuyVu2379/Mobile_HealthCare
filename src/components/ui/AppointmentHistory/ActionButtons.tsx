@@ -10,12 +10,14 @@ interface ActionButtonsProps {
     onCancel: () => void;
     onConfirm: () => void;
     isConfirmEnabled: boolean;
+    isReschedule?: boolean; // Flag để biết có phải đổi lịch không
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
     onCancel,
     onConfirm,
     isConfirmEnabled,
+    isReschedule = false,
 }) => {
     return (
         <View style={styles.container}>
@@ -37,7 +39,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
                         !isConfirmEnabled && styles.disabledButtonText,
                     ]}
                 >
-                    Xác nhận đặt lịch
+                    {isReschedule ? 'Xác nhận đổi lịch' : 'Xác nhận đặt lịch'}
                 </Text>
             </TouchableOpacity>
         </View>

@@ -37,7 +37,9 @@ export interface GroupResponse {
     groupId: String;
     groupName: String;
     appointmentId: String;
-    memberIds: String[];
+    lastMessageContent: String;
+    timeLastMessage: String;
+    members: MemberDTO[];
     createdAt: Date;
     updatedAt: Date;
 }

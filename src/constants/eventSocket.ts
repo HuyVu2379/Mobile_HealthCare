@@ -20,6 +20,15 @@ export const SOCKET_ACTIONS = {
         DELETE_GROUP: 'delete_group',
         GROUP_DELETED: 'group_deleted',
     },
+    ROOM:
+    {
+        CREATE_ROOM: 'create_room',
+        GET_ROOM_BY_DATE: 'get_rooms_by_date',
+        UPDATE_ROOM_STATUS: 'update_room_status',
+        CREATE_ROOM_RESPONSE: 'create_room_response',
+        GET_ROOM_BY_DATE_RESPONSE: 'get_rooms_by_date_response',
+        UPDATE_ROOM_STATUS_RESPONSE: 'update_room_status_response',
+    },
     APPOINTMENT_RESPONSE: "schedule_appointment_response",
     APPOINTMENT: "schedule_appointment"
 };

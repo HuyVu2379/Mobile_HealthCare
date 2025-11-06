@@ -522,7 +522,7 @@ const HealthFormScreen: React.FC = () => {
                         <View style={styles.confidenceContainer}>
                             <Text style={styles.confidenceLabel}>Độ Tin Cậy:</Text>
                             <Text style={styles.confidenceValue}>
-                                {(Number(predictionResult.confidence) * 100).toFixed(1)}%
+                                {(Number(predictionResult.confidence) * 100).toFixed(3)}%
                             </Text>
                         </View>
 

@@ -19,6 +19,7 @@ import { WebSocketTestScreen } from './src/screens';
 import { LogBox } from 'react-native';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
 import { AuthProvider } from './src/contexts/AuthContext';
+// import { VideoCallProvider } from './src/contexts/VideoCallContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 LogBox.ignoreAllLogs(false);
@@ -28,13 +29,15 @@ function App() {
   return (
     <Provider store={store}>
       <WebSocketProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <View style={styles.container}>
-          <SafeAreaView style={styles.backgroundPlaceholder}>
-            <NavigationApp />
-            <Toast />
-          </SafeAreaView>
-        </View>
+        {/* <VideoCallProvider> */}
+          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+          <View style={styles.container}>
+            <SafeAreaView style={styles.backgroundPlaceholder}>
+              <NavigationApp />
+              <Toast />
+            </SafeAreaView>
+          </View>
+        {/* </VideoCallProvider> */}
       </WebSocketProvider>
     </Provider>
   );
