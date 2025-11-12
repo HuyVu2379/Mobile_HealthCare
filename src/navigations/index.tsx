@@ -8,6 +8,9 @@ import {
     LandingScreen,
     LoginScreen,
     RegisterScreen,
+    ResetPasswordScreen,
+    ChangePasswordScreen,
+    VerifyOTPScreen,
     ChatbotScreen,
     HealthFormScreen,
     AppointmentHistoryScreen,
@@ -34,6 +37,9 @@ function NavigationApp() {
                             <Stack.Screen name={ROUTING.HOME} component={LandingScreen} options={{ headerShown: false }} />
                             <Stack.Screen name={ROUTING.LOGIN} component={LoginScreen} options={{ headerShown: false }} />
                             <Stack.Screen name={ROUTING.REGISTER} component={RegisterScreen} options={{ headerShown: false }} />
+                            <Stack.Screen name={ROUTING.RESET_PASSWORD} component={ResetPasswordScreen} options={{ headerShown: false }} />
+                            <Stack.Screen name={ROUTING.CHANGE_PASSWORD} component={ChangePasswordScreen} options={{ headerShown: false }} />
+                            <Stack.Screen name={ROUTING.OTP} component={VerifyOTPScreen} options={{ headerShown: false }} />
                             <Stack.Screen name={ROUTING.CHATBOT} component={ChatbotScreen} options={{ headerShown: false }} />
                             <Stack.Screen name={ROUTING.CHAT_WITH_DOCTOR} component={ConversationListScreen} options={{ headerShown: false }} />
                             <Stack.Screen name={ROUTING.PREDICT} component={HealthFormScreen} options={{ headerShown: false }} />

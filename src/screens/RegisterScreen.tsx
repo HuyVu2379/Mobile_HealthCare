@@ -15,30 +15,66 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { Lucide } from '@react-native-vector-icons/lucide';
+import { useAuthContext } from '../contexts/AuthContext';
+import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import ROUTING from '../constants/routing';
+import Toast from 'react-native-toast-message';
 
-interface RegisterScreenProps {
-  onLoginPress?: () => void;
-  onRegisterPress?: (email: string, password: string, agreedToTerms: boolean) => void;
-}
-
-const RegisterScreen: React.FC<RegisterScreenProps> = ({
-  onLoginPress,
-  onRegisterPress,
-}) => {
+const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { handleRegister } = useAuthContext();
 
-  const handleRegister = () => {
-    if (onRegisterPress) {
-      onRegisterPress(email, password, agreedToTerms);
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+
+  const isFormValid =
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    agreedToTerms;
+
+  const handleSubmit = () => {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Email không hợp lệ',
+        text2: 'Vui lòng nhập đúng định dạng email'
+      });
+      return;
     }
-  };
 
-  const isFormValid = email.trim().length > 0 && password.length > 0 && agreedToTerms;
+    // Validate password length
+    if (password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Mật khẩu quá ngắn',
+        text2: 'Mật khẩu phải có ít nhất 6 ký tự'
+      });
+      return;
+    }
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      Toast.show({
+        type: 'error',
+        text1: 'Mật khẩu không khớp',
+        text2: 'Vui lòng kiểm tra lại mật khẩu xác nhận'
+      });
+      return;
+    }
+
+    // Call handleRegister
+    handleRegister({ email, password });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -112,6 +148,31 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    confirmPasswordFocused && styles.inputFocused,
+                  ]}
+                  placeholder="Xác nhận mật khẩu"
+                  placeholderTextColor={theme.colors.text.inverse}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  onFocus={() => setConfirmPasswordFocused(true)}
+                  onBlur={() => setConfirmPasswordFocused(false)}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.passwordToggle}
+                >
+                  <Lucide name={showConfirmPassword ? "eye-closed" : "eye"} size={20} />
+                </TouchableOpacity>
+              </View>
+
               {/* Terms and Conditions Checkbox */}
               <Pressable
                 style={styles.checkboxContainer}
@@ -130,7 +191,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   styles.registerButton,
                   !isFormValid && styles.registerButtonDisabled,
                 ]}
-                onPress={handleRegister}
+                onPress={handleSubmit}
                 disabled={!isFormValid}
                 activeOpacity={0.8}>
                 <Text style={styles.registerButtonText}>Đăng ký</Text>
@@ -139,7 +200,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {/* Login Link */}
               <View style={styles.loginLinkContainer}>
                 <Text style={styles.loginText}>Đã có tài khoản? </Text>
-                <TouchableOpacity onPress={onLoginPress} activeOpacity={0.7}>
+                <TouchableOpacity onPress={() => navigation.navigate(ROUTING.LOGIN)} activeOpacity={0.7}>
                   <Text style={styles.loginLinkText}>Đăng nhập</Text>
                 </TouchableOpacity>
               </View>

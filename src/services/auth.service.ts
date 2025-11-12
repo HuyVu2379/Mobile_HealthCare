@@ -1,6 +1,6 @@
 import axiosConfig from "./axios.config";
 const api_url = '/auth'
-import { LoginRequest } from "../types/IUser";
+import { LoginRequest, AuthenticationResponse, ResetPasswordRequest } from "../types/IUser";
 import { CustomApiResponse, LoginResponse } from "../types/api";
 import { TokenService } from "./token.service";
 import store from "../store/store";
@@ -33,10 +33,22 @@ export const login = async (data: LoginRequest): Promise<any> => {
 
     return response;
 }
-
+export const register = async (data: LoginRequest): Promise<CustomApiResponse<AuthenticationResponse>> => {
+    return await axiosConfig.post(`${api_url}/register`, data);
+}
 export const verifyOTP = async ({ email, otp }: { email: string; otp: string }): Promise<CustomApiResponse<LoginResponse>> => {
     const param = { email, otp }
-    return await axiosConfig.post(`${api_url}/verify-account`, param)
+    console.log("check param verify otp: ", email, "  " + otp);
+
+    return await axiosConfig.get(`${api_url}/verify-account`, { params: param })
+}
+export const verifyOTPForResetPassword = async ({ email, otp }: { email: string; otp: string }): Promise<CustomApiResponse<any>> => {
+    const param = { email, otp }
+    console.log("check param verify otp for reset password: ", email, "  " + otp);
+    return await axiosConfig.get(`${api_url}/validate-otp`, { params: param })
+}
+export const resendOTP = async (email: string): Promise<CustomApiResponse<any>> => {
+    return await axiosConfig.get(`${api_url}/send-otp-register/${email}`)
 }
 
 export const getMe = async (): Promise<any> => {
@@ -118,4 +130,18 @@ export const loadTokensFromStorage = async (): Promise<void> => {
     } catch (error) {
         console.error('Error loading tokens from storage:', error);
     }
+}
+
+/**
+ * Gửi yêu cầu reset password
+ */
+export const resetPasswordRequest = async (email: string): Promise<CustomApiResponse<any>> => {
+    return await axiosConfig.get(`${api_url}/send-otp-reset-password/${email}`);
+}
+
+/**
+ * Reset password với token
+ */
+export const resetPassword = async (data: ResetPasswordRequest): Promise<CustomApiResponse<any>> => {
+    return await axiosConfig.post(`${api_url}/reset-password`, data);
 }

@@ -2,6 +2,8 @@ const ROUTING = {
     HOME: "Home",
     LOGIN: "Login",
     REGISTER: "Register",
+    RESET_PASSWORD: "ResetPassword",
+    CHANGE_PASSWORD: "ChangePassword",
     PROFILE: "Profile",
     OTP: "Otp",
     CHATBOT: "Chatbot",

@@ -5,8 +5,10 @@ export type RootStackParamList = {
     [ROUTING.HOME]: undefined;
     [ROUTING.LOGIN]: undefined;
     [ROUTING.REGISTER]: undefined;
+    [ROUTING.RESET_PASSWORD]: undefined;
+    [ROUTING.CHANGE_PASSWORD]: { email: string; otp: string };
     [ROUTING.PROFILE]: undefined;
-    [ROUTING.OTP]: { phoneNumber: string };
+    [ROUTING.OTP]: { email: string; fromResetPassword?: boolean };
     [ROUTING.CHATBOT]: undefined;
     [ROUTING.CHAT_WITH_DOCTOR]: undefined;
     [ROUTING.CHAT]: { groupId: string; groupName: string };

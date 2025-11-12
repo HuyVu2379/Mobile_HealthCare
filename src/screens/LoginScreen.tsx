@@ -106,7 +106,7 @@ const LoginScreen = () => {
 
                             {/* Forgot Password and Remember Me */}
                             <View style={styles.forgotPasswordContainer}>
-                                <TouchableOpacity>
+                                <TouchableOpacity onPress={() => navigation.navigate(ROUTING.RESET_PASSWORD)}>
                                     <Text style={styles.forgotPasswordText}>Quên mật khẩu</Text>
                                 </TouchableOpacity>
                                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: '30%' }}>

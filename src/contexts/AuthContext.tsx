@@ -4,18 +4,23 @@ import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/
 import Toast from 'react-native-toast-message';
 
 import { LoginRequest } from '../types/IUser';
-import { login, verifyOTP, getMe, logout, isAuthenticated, loadTokensFromStorage } from '../services/auth.service';
+import { login, verifyOTP, getMe, logout, isAuthenticated, loadTokensFromStorage, register, resendOTP, resetPasswordRequest, verifyOTPForResetPassword, resetPassword } from '../services/auth.service';
 import { setMe, setAccessToken, setRefreshToken, loadTokensFromStorage as loadTokensAction, clearTokens } from '../store/slices/userSlice';
 import { RootState } from '../store/store';
 import ROUTING from '../constants/routing';
 import { useWebSocketContext } from './WebSocketContext';
-
+import { TokenService } from '../services/token.service';
 interface AuthContextType {
     user: any;
     accessToken: string | null;
     refreshToken: string | null;
     handleLogin: (data: LoginRequest) => Promise<void>;
+    handleRegister: (data: LoginRequest) => Promise<void>;
     handleVerifyOTP: (email: string, otp: string) => Promise<void>;
+    handleResendOTP: (email: string) => Promise<void>;
+    handleResetPasswordRequest: (email: string) => Promise<void>;
+    handleVerifyOTPForResetPassword: (email: string, otp: string) => Promise<void>;
+    handleResetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
     handleLogout: () => Promise<void>;
     getCurrentUser: () => Promise<any>;
     loadTokens: () => Promise<void>;
@@ -47,6 +52,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return null;
         }
     }, [dispatch]);
+
+    const handleResendOTP = useCallback(async (email: string) => {
+        try {
+            console.log("check sending resend OTP for email: ", email);
+            const response = await resendOTP(email);
+            console.log("Resend OTP response: ", response);
+            if (response.statusCode === 200 || response.success) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Đã gửi lại mã OTP',
+                    text2: 'Vui lòng kiểm tra email của bạn'
+                });
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Gửi lại OTP thất bại',
+                    text2: response.message || 'Có lỗi xảy ra'
+                });
+            }
+        } catch (error: any) {
+            console.error("Resend OTP failed", error);
+            Toast.show({
+                type: 'error',
+                text1: 'Gửi lại OTP thất bại',
+                text2: error?.response?.data?.message || error.message || 'Có lỗi xảy ra'
+            });
+            throw error;
+        }
+    }, []);
+
+    const handleRegister = useCallback(async (data: LoginRequest) => {
+        try {
+            const response = await register(data);
+            console.log("check response register: ", response);
+
+            if (response.data?.access_token && response.data?.refresh_token) {
+                // Lưu tokens vào storage
+                TokenService.setAccessToken(response.data.access_token);
+                TokenService.setRefreshToken(response.data.refresh_token);
+
+                // Hiển thị thông báo thành công
+                Toast.show({
+                    type: 'success',
+                    text1: 'Đăng ký thành công',
+                    text2: 'Vui lòng kiểm tra email để xác thực tài khoản'
+                });
+
+                // Navigate đến màn hình OTP với email
+                navigation.navigate(ROUTING.OTP, { email: data.email });
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Đăng ký thất bại',
+                    text2: response.message || 'Có lỗi xảy ra'
+                });
+            }
+        } catch (error: any) {
+            console.error("Registration failed", error);
+
+            // Kiểm tra nếu email đã tồn tại (statusCode 409)
+            const statusCode = error?.response?.data?.statusCode || error?.statusCode;
+            const errorMessage = error?.response?.data?.message || error?.message || '';
+
+            if (statusCode === 409 && errorMessage.toLowerCase().includes('already exists')) {
+                // Email đã tồn tại - gửi lại OTP và yêu cầu xác thực
+                Toast.show({
+                    type: 'info',
+                    text1: 'Email đã tồn tại',
+                    text2: 'Đang gửi mã OTP để xác thực tài khoản...'
+                });
+
+                try {
+                    // Gửi OTP trước khi navigate
+                    await handleResendOTP(data.email);
+
+                    // Navigate đến màn hình OTP với email
+                    navigation.navigate(ROUTING.OTP, { email: data.email });
+                } catch (resendError) {
+                    console.error("Failed to resend OTP:", resendError);
+                    // Vẫn navigate đến OTP screen để user có thể tự gửi lại
+                    navigation.navigate(ROUTING.OTP, { email: data.email });
+                }
+            } else {
+                // Các lỗi khác
+                Toast.show({
+                    type: 'error',
+                    text1: 'Đăng ký thất bại',
+                    text2: errorMessage || 'Có lỗi xảy ra'
+                });
+                throw error;
+            }
+        }
+    }, [dispatch, navigation, handleResendOTP]);
 
     const handleLogin = useCallback(async (data: LoginRequest) => {
         try {
@@ -115,6 +213,109 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 text1: 'Xác thực thất bại',
                 text2: error.message || 'Có lỗi xảy ra'
             });
+        }
+    }, [navigation]);
+
+    const handleResetPasswordRequest = useCallback(async (email: string) => {
+        try {
+            const response = await resetPasswordRequest(email);
+
+            if (response.statusCode === 200 || response.statusCode === 201) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Gửi email thành công',
+                    text2: 'Mã OTP đã được gửi đến email của bạn'
+                });
+
+                // Navigate đến màn hình VerifyOTP sau 1 giây
+                setTimeout(() => {
+                    navigation.navigate(ROUTING.OTP, { email, fromResetPassword: true });
+                }, 1000);
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Gửi email thất bại',
+                    text2: response.message || 'Không thể gửi email đặt lại mật khẩu'
+                });
+                throw new Error(response.message || 'Gửi email thất bại');
+            }
+        } catch (error: any) {
+            console.error("Reset password request failed", error);
+            const errorMessage = error.response?.data?.message || error.message || 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.';
+            Toast.show({
+                type: 'error',
+                text1: 'Lỗi',
+                text2: errorMessage
+            });
+            throw error;
+        }
+    }, [navigation]);
+
+    const handleVerifyOTPForResetPassword = useCallback(async (email: string, otp: string) => {
+        try {
+            const response = await verifyOTPForResetPassword({ email, otp });
+
+            if (response.statusCode === 200 || response.statusCode === 201) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Xác thực thành công',
+                    text2: 'Vui lòng nhập mật khẩu mới'
+                });
+
+                // Navigate đến màn hình ChangePassword
+                navigation.navigate(ROUTING.CHANGE_PASSWORD, { email, otp });
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Xác thực thất bại',
+                    text2: response.message || 'OTP không đúng hoặc đã hết hạn'
+                });
+                throw new Error(response.message || 'Xác thực thất bại');
+            }
+        } catch (error: any) {
+            console.error("Verify OTP for reset password failed", error);
+            const errorMessage = error.response?.data?.message || error.message || 'Xác thực OTP thất bại. Vui lòng thử lại.';
+            Toast.show({
+                type: 'error',
+                text1: 'Lỗi',
+                text2: errorMessage
+            });
+            throw error;
+        }
+    }, [navigation]);
+
+    const handleResetPassword = useCallback(async (email: string, otp: string, newPassword: string) => {
+        try {
+            const response = await resetPassword({ email, otp, newPassword });
+
+            if (response.statusCode === 200 || response.statusCode === 201) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Đổi mật khẩu thành công',
+                    text2: 'Vui lòng đăng nhập lại với mật khẩu mới'
+                });
+
+                // Navigate đến LoginScreen sau 1.5 giây
+                setTimeout(() => {
+                    navigation.navigate(ROUTING.LOGIN as never);
+                }, 1500);
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Đổi mật khẩu thất bại',
+                    text2: response.message || 'Không thể đổi mật khẩu'
+                });
+                throw new Error(response.message || 'Đổi mật khẩu thất bại');
+            }
+        } catch (error: any) {
+            console.error("Reset password failed", error);
+            const errorMessage = error.response?.data?.message || error.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.';
+            Toast.show({
+                type: 'error',
+                text1: 'Lỗi',
+                text2: errorMessage
+            });
+            throw error;
         }
     }, [navigation]);
 
@@ -201,7 +402,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         accessToken,
         refreshToken,
         handleLogin,
+        handleRegister,
         handleVerifyOTP,
+        handleResendOTP,
+        handleResetPasswordRequest,
+        handleVerifyOTPForResetPassword,
+        handleResetPassword,
         handleLogout,
         getCurrentUser,
         loadTokens,
