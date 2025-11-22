@@ -1,14 +1,128 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LineChart } from 'react-native-chart-kit';
 import useHealthRecord from '../hooks/useHealthRecord';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
+
+const screenWidth = Dimensions.get('window').width;
 
 const TestHistoryScreen = () => {
     const { handleGetHealthMetricByPatient, healthMetrics, loading, error } = useHealthRecord();
     const user = useSelector((state: RootState) => state.user.user);
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+    const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
+    const [showChart, setShowChart] = useState<boolean>(true);
+
+    // Lấy danh sách tất cả các chỉ số có trong dữ liệu
+    const availableMetrics = useMemo(() => {
+        const metricsSet = new Set<string>();
+        healthMetrics.forEach(record => {
+            record.metrics.forEach(metric => {
+                metricsSet.add(metric.name);
+            });
+        });
+        return Array.from(metricsSet);
+    }, [healthMetrics]);
+
+    // Tự động chọn chỉ số đầu tiên khi có dữ liệu
+    useEffect(() => {
+        if (availableMetrics.length > 0 && !selectedMetric) {
+            setSelectedMetric(availableMetrics[0]);
+        }
+    }, [availableMetrics]);
+
+    // Chuẩn bị dữ liệu cho biểu đồ
+    const chartData = useMemo(() => {
+        if (!selectedMetric || healthMetrics.length === 0) return null;
+
+        // Sắp xếp dữ liệu theo thời gian
+        const sortedRecords = [...healthMetrics].sort((a, b) =>
+            new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime()
+        );
+
+        const labels: string[] = [];
+        const values: number[] = [];
+        let unit = '';
+
+        sortedRecords.forEach(record => {
+            const metric = record.metrics.find(m => m.name === selectedMetric);
+            if (metric) {
+                const date = new Date(record.measuredAt);
+                const label = `${date.getDate()}/${date.getMonth() + 1}`;
+                labels.push(label);
+
+                const value = typeof metric.value === 'number'
+                    ? metric.value
+                    : parseFloat(metric.value as string);
+                values.push(isNaN(value) ? 0 : value);
+
+                if (!unit && metric.unit) {
+                    unit = metric.unit;
+                }
+            }
+        });
+
+        if (values.length === 0) return null;
+
+        return { labels, values, unit };
+    }, [selectedMetric, healthMetrics]);
+
+    // Tính toán thay đổi theo tháng
+    const monthlyChanges = useMemo(() => {
+        if (!selectedMetric || healthMetrics.length === 0) return [];
+
+        const monthlyData: { [key: string]: { values: number[], count: number } } = {};
+
+        healthMetrics.forEach(record => {
+            const metric = record.metrics.find(m => m.name === selectedMetric);
+            if (metric) {
+                const date = new Date(record.measuredAt);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+                const value = typeof metric.value === 'number'
+                    ? metric.value
+                    : parseFloat(metric.value as string);
+
+                if (!isNaN(value)) {
+                    if (!monthlyData[monthKey]) {
+                        monthlyData[monthKey] = { values: [], count: 0 };
+                    }
+                    monthlyData[monthKey].values.push(value);
+                    monthlyData[monthKey].count++;
+                }
+            }
+        });
+
+        // Tính trung bình và so sánh
+        const months = Object.keys(monthlyData).sort();
+        const changes = months.map((month, index) => {
+            const avg = monthlyData[month].values.reduce((a, b) => a + b, 0) / monthlyData[month].count;
+            const monthDate = new Date(month + '-01');
+            const monthName = monthDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+
+            let change = 0;
+            let changePercent = 0;
+
+            if (index > 0) {
+                const prevMonth = months[index - 1];
+                const prevAvg = monthlyData[prevMonth].values.reduce((a, b) => a + b, 0) / monthlyData[prevMonth].count;
+                change = avg - prevAvg;
+                changePercent = prevAvg !== 0 ? (change / prevAvg) * 100 : 0;
+            }
+
+            return {
+                month: monthName,
+                average: avg,
+                change,
+                changePercent,
+                count: monthlyData[month].count
+            };
+        });
+
+        return changes;
+    }, [selectedMetric, healthMetrics]);
 
     useEffect(() => {
         if (user?.userId) {
@@ -63,6 +177,173 @@ const TestHistoryScreen = () => {
                         </View>
                     ) : healthMetrics.length > 0 ? (
                         <>
+                            {/* Toggle hiển thị biểu đồ */}
+                            <TouchableOpacity
+                                style={styles.toggleButton}
+                                onPress={() => setShowChart(!showChart)}
+                            >
+                                <Text style={styles.toggleButtonText}>
+                                    {showChart ? '📊 Ẩn biểu đồ' : '📊 Hiện biểu đồ'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Biểu đồ và phân tích */}
+                            {showChart && (
+                                <>
+                                    {/* Chọn chỉ số để hiển thị */}
+                                    <View style={styles.chartCard}>
+                                        <Text style={styles.chartTitle}>Biểu đồ theo dõi</Text>
+
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            style={styles.metricSelector}
+                                        >
+                                            {availableMetrics.map((metric) => (
+                                                <TouchableOpacity
+                                                    key={metric}
+                                                    style={[
+                                                        styles.metricButton,
+                                                        selectedMetric === metric && styles.metricButtonActive
+                                                    ]}
+                                                    onPress={() => setSelectedMetric(metric)}
+                                                >
+                                                    <Text style={[
+                                                        styles.metricButtonText,
+                                                        selectedMetric === metric && styles.metricButtonTextActive
+                                                    ]}>
+                                                        {metric}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+
+                                        {/* Biểu đồ đường */}
+                                        {chartData && chartData.values.length > 0 && (
+                                            <ScrollView
+                                                horizontal
+                                                showsHorizontalScrollIndicator={true}
+                                                style={styles.chartScrollView}
+                                            >
+                                                <LineChart
+                                                    data={{
+                                                        labels: chartData.labels,
+                                                        datasets: [{
+                                                            data: chartData.values,
+                                                            color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+                                                            strokeWidth: 3
+                                                        }],
+                                                        legend: [selectedMetric || '']
+                                                    }}
+                                                    width={Math.max(screenWidth - 60, chartData.labels.length * 60)}
+                                                    height={240}
+                                                    chartConfig={{
+                                                        backgroundColor: '#ffffff',
+                                                        backgroundGradientFrom: '#ffffff',
+                                                        backgroundGradientTo: '#f8f9fa',
+                                                        decimalPlaces: 1,
+                                                        color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+                                                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                                        style: {
+                                                            borderRadius: 16
+                                                        },
+                                                        propsForDots: {
+                                                            r: '6',
+                                                            strokeWidth: '2',
+                                                            stroke: '#007AFF'
+                                                        },
+                                                        propsForBackgroundLines: {
+                                                            strokeDasharray: '',
+                                                            stroke: '#e3e3e3',
+                                                            strokeWidth: 1
+                                                        }
+                                                    }}
+                                                    bezier
+                                                    style={styles.chart}
+                                                    withInnerLines={true}
+                                                    withOuterLines={true}
+                                                    withVerticalLabels={true}
+                                                    withHorizontalLabels={true}
+                                                    withDots={true}
+                                                    withShadow={false}
+                                                    fromZero={false}
+                                                />
+                                            </ScrollView>
+                                        )}
+
+                                        {chartData && chartData.unit && (
+                                            <Text style={styles.chartUnit}>Đơn vị: {chartData.unit}</Text>
+                                        )}
+
+                                        {(!chartData || chartData.values.length === 0) && (
+                                            <View style={styles.noChartData}>
+                                                <Text style={styles.noChartDataText}>
+                                                    Không có dữ liệu cho chỉ số này
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Phân tích thay đổi theo tháng */}
+                                    {monthlyChanges.length > 0 && (
+                                        <View style={styles.analysisCard}>
+                                            <Text style={styles.analysisTitle}>📈 Phân tích theo tháng</Text>
+                                            {monthlyChanges.map((monthData, index) => (
+                                                <View key={index} style={styles.monthItem}>
+                                                    <View style={styles.monthHeader}>
+                                                        <Text style={styles.monthName}>{monthData.month}</Text>
+                                                        <Text style={styles.monthCount}>
+                                                            ({monthData.count} lần đo)
+                                                        </Text>
+                                                    </View>
+
+                                                    <View style={styles.monthStats}>
+                                                        <View style={styles.statItem}>
+                                                            <Text style={styles.statLabel}>Trung bình:</Text>
+                                                            <Text style={styles.statValue}>
+                                                                {monthData.average.toFixed(1)} {chartData?.unit}
+                                                            </Text>
+                                                        </View>
+
+                                                        {index > 0 && (
+                                                            <View style={styles.statItem}>
+                                                                <Text style={styles.statLabel}>Thay đổi:</Text>
+                                                                <View style={styles.changeContainer}>
+                                                                    <Text style={[
+                                                                        styles.changeValue,
+                                                                        monthData.change > 0 ? styles.changePositive :
+                                                                            monthData.change < 0 ? styles.changeNegative :
+                                                                                styles.changeNeutral
+                                                                    ]}>
+                                                                        {monthData.change > 0 ? '+' : ''}
+                                                                        {monthData.change.toFixed(1)} {chartData?.unit}
+                                                                    </Text>
+                                                                    <Text style={[
+                                                                        styles.changePercent,
+                                                                        monthData.changePercent > 0 ? styles.changePositive :
+                                                                            monthData.changePercent < 0 ? styles.changeNegative :
+                                                                                styles.changeNeutral
+                                                                    ]}>
+                                                                        ({monthData.changePercent > 0 ? '+' : ''}
+                                                                        {monthData.changePercent.toFixed(1)}%)
+                                                                        {monthData.change > 0 ? ' ↑' : monthData.change < 0 ? ' ↓' : ' →'}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Danh sách chi tiết các lần đo */}
+                            <View style={styles.historyHeader}>
+                                <Text style={styles.historyTitle}>📋 Lịch sử đo</Text>
+                            </View>
+
                             {healthMetrics.map((record, recordIndex) => {
                                 const isExpanded = expandedIndex === recordIndex;
                                 return (
@@ -181,6 +462,184 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666666',
         textAlign: 'center',
+    },
+    // Toggle Button
+    toggleButton: {
+        backgroundColor: '#007AFF',
+        padding: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    toggleButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    // Chart Card
+    chartCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    chartTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#212529',
+        marginBottom: 16,
+    },
+    // Metric Selector
+    metricSelector: {
+        marginBottom: 16,
+    },
+    metricButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#E9ECEF',
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#DEE2E6',
+    },
+    metricButtonActive: {
+        backgroundColor: '#007AFF',
+        borderColor: '#007AFF',
+    },
+    metricButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#495057',
+    },
+    metricButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    // Chart
+    chartScrollView: {
+        marginVertical: 8,
+    },
+    chart: {
+        borderRadius: 16,
+        marginVertical: 8,
+    },
+    chartUnit: {
+        fontSize: 12,
+        color: '#6C757D',
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    noChartData: {
+        padding: 30,
+        alignItems: 'center',
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    noChartDataText: {
+        fontSize: 14,
+        color: '#6C757D',
+    },
+    // Analysis Card
+    analysisCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    analysisTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#212529',
+        marginBottom: 16,
+    },
+    monthItem: {
+        backgroundColor: '#F8F9FA',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#007AFF',
+    },
+    monthHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    monthName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#212529',
+    },
+    monthCount: {
+        fontSize: 12,
+        color: '#6C757D',
+    },
+    monthStats: {
+        gap: 8,
+    },
+    statItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    statLabel: {
+        fontSize: 14,
+        color: '#495057',
+    },
+    statValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#212529',
+    },
+    changeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    changeValue: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    changePercent: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    changePositive: {
+        color: '#28A745',
+    },
+    changeNegative: {
+        color: '#DC3545',
+    },
+    changeNeutral: {
+        color: '#6C757D',
+    },
+    // History Header
+    historyHeader: {
+        marginTop: 8,
+        marginBottom: 16,
+    },
+    historyTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#212529',
     },
     // Record Card (Mỗi lần đo)
     recordCard: {

@@ -11,6 +11,9 @@ const ROUTING = {
     PREDICT: "Predict",
     SOCKET_TEST: "SocketTest",
     VIDEO_CALL: "VideoCall",
+    DOCTOR_DETAIL: "DoctorDetail",
+    FORUM: "Forum",
+    POST_DETAIL: "PostDetail",
     // Bottom Tab Navigation
     BOTTOM_TAB: "BottomTab",
     PERSONAL_INFO: "PersonalInfo",

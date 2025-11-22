@@ -1,5 +1,6 @@
 import ROUTING from "../constants/routing";
 import { Record } from "../types/healthRecord";
+import { DoctorResponse } from "../types/IUser";
 
 export type RootStackParamList = {
     [ROUTING.HOME]: undefined;
@@ -17,6 +18,7 @@ export type RootStackParamList = {
     [ROUTING.SOCKET_TEST]: undefined;
     [ROUTING.BOTTOM_TAB]: undefined;
     [ROUTING.MEDICAL_RECORD_DETAIL]: { record: Record };
+    [ROUTING.DOCTOR_DETAIL]: { doctor: DoctorResponse };
     [ROUTING.VIDEO_CALL]: {
         mode: 'create' | 'join';
         roomId?: string;

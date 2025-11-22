@@ -26,14 +26,14 @@ const gridData = [
         routing: ROUTING.BOTTOM_TAB,
         imageUrl: 'https://images.unsplash.com/photo-1584515933487-779824d29309?w=400',
         subtitle: 'Hồ sơ bệnh án',
-        title: 'Theo dõi và lưu trữ hồ sơ của bạn'
+        title: 'Theo dõi và lưu trữ hồ sơ'
     },
     {
         id: 4,
-        routing: ROUTING.BOTTOM_TAB,
-        imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400',
-        subtitle: 'Khám online',
-        title: 'Video call với bác sĩ'
+        routing: ROUTING.FORUM,
+        imageUrl: 'https://salavietnam.vn/dataimages/images/diendan.jpg',
+        subtitle: 'Diễn đàn chăm sóc sức khỏe',
+        title: 'Diễn đàn'
     },
     {
         id: 5,
@@ -45,7 +45,7 @@ const gridData = [
     {
         id: 6,
         routing: ROUTING.CHAT_WITH_DOCTOR,
-        imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400',
+        imageUrl: 'https://suckhoedoisong.qltns.mediacdn.vn/2015/1-1869-nguyen-nhan-rung-toc-do-stress3-1429501110789.jpg',
         subtitle: 'Tư vấn trực tuyến',
         title: 'Chat với bác sĩ đã hẹn'
     }

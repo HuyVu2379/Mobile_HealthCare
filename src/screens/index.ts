@@ -10,6 +10,9 @@ export { default as AppointmentHistoryScreen } from './AppointmentHistoryScreen'
 export { default as WebSocketTestScreen } from './WebSocketTestScreen';
 export { default as ConversationListScreen } from './ConversationListScreen';
 export { VideoCallScreen } from './VideoCallScreen';
+export { default as DoctorDetailScreen } from './DoctorDetailScreen';
+export { default as ForumScreen } from './ForumScreen';
+export { default as PostDetailScreen } from './PostDetailScreen';
 // Bottom Tab Screens
 export { default as PersonalInfoScreen } from './PersonalInfoScreen';
 export { default as TestHistoryScreen } from './TestHistoryScreen';

@@ -15,11 +15,14 @@ import {
     HealthFormScreen,
     AppointmentHistoryScreen,
     ConversationListScreen,
-    VideoCallScreen
+    VideoCallScreen,
+    DoctorDetailScreen,
+    ForumScreen,
+    PostDetailScreen
 } from "../screens";
 import MedicalRecordDetailScreen from "../screens/MedicalRecordDetailScreen";
 import ChatScreen from "../screens/ChatScreen";
-import { AuthProvider, AppointmentProvider, ChatProvider } from "../contexts";
+import { AuthProvider, AppointmentProvider, ChatProvider, CommentProvider } from "../contexts";
 import BottomTabNavigator from "./BottomTabNavigator";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,25 +33,30 @@ function NavigationApp() {
             <AuthProvider>
                 <AppointmentProvider>
                     <ChatProvider>
-                        <Stack.Navigator
-                            initialRouteName={ROUTING.LOGIN}
-                            screenOptions={{ headerShown: false }}
-                        >
-                            <Stack.Screen name={ROUTING.HOME} component={LandingScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.LOGIN} component={LoginScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.REGISTER} component={RegisterScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.RESET_PASSWORD} component={ResetPasswordScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.CHANGE_PASSWORD} component={ChangePasswordScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.OTP} component={VerifyOTPScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.CHATBOT} component={ChatbotScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.CHAT_WITH_DOCTOR} component={ConversationListScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.PREDICT} component={HealthFormScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.APPOINTMENT} component={AppointmentHistoryScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.BOTTOM_TAB} component={BottomTabNavigator} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.MEDICAL_RECORD_DETAIL} component={MedicalRecordDetailScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.CHAT} component={ChatScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name={ROUTING.VIDEO_CALL} component={VideoCallScreen} options={{ headerShown: false }} />
-                        </Stack.Navigator>
+                        <CommentProvider>
+                            <Stack.Navigator
+                                initialRouteName={ROUTING.LOGIN}
+                                screenOptions={{ headerShown: false }}
+                            >
+                                <Stack.Screen name={ROUTING.HOME} component={LandingScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.LOGIN} component={LoginScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.REGISTER} component={RegisterScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.RESET_PASSWORD} component={ResetPasswordScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.CHANGE_PASSWORD} component={ChangePasswordScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.OTP} component={VerifyOTPScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.CHATBOT} component={ChatbotScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.CHAT_WITH_DOCTOR} component={ConversationListScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.PREDICT} component={HealthFormScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.APPOINTMENT} component={AppointmentHistoryScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.FORUM} component={ForumScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.POST_DETAIL} component={PostDetailScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.BOTTOM_TAB} component={BottomTabNavigator} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.MEDICAL_RECORD_DETAIL} component={MedicalRecordDetailScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.DOCTOR_DETAIL} component={DoctorDetailScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.CHAT} component={ChatScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name={ROUTING.VIDEO_CALL} component={VideoCallScreen} options={{ headerShown: false }} />
+                            </Stack.Navigator>
+                        </CommentProvider>
                     </ChatProvider>
                 </AppointmentProvider>
             </AuthProvider>

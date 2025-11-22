@@ -1,11 +1,11 @@
 import React from 'react'
-import { ImageBackground, StyleSheet, View, Text } from 'react-native'
+import { ImageBackground, StyleSheet, View, Text, ScrollView } from 'react-native'
 import Header from '../components/shared/Header';
 import { theme } from "../theme"
-import { FunctionGrid } from '../components/ui/Landing';
+import { FunctionGrid, OutstandingDoctors } from '../components/ui/Landing';
 const LandingScreen: React.FC = () => {
     return (
-        <View style={styles.container}>
+        <ScrollView style={styles.scrollView}>
             <ImageBackground source={require('../assets/header-banner.jpg')} style={styles.background}>
                 <View style={styles.overlay} />
                 <Header />
@@ -19,14 +19,14 @@ const LandingScreen: React.FC = () => {
                 <Text style={styles.contentSubtitle}>Khám phá các dịch vụ được cá nhân hóa theo nhu cầu của bạn</Text>
                 <FunctionGrid />
             </View>
-        </View>
+            <OutstandingDoctors />
+        </ScrollView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
+    scrollView: {
         flex: 1,
-        alignItems: 'center',
     },
     overlay: {
         ...StyleSheet.absoluteFillObject, // Chiếm toàn bộ không gian của ImageBackground
