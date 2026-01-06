@@ -163,10 +163,6 @@ export interface TrendResponse {
     stagePrevious: number,
     stageCurrent: number,
     confidenceChange: number,
-    metricPrevious: number,
-    metricCurrent: number,
-    metricChangePct: number,
-    metricName: String,
     summary: String
 }
 
@@ -181,6 +177,5 @@ export interface MetricComparison {
 }
 
 export interface AlertResponse {
-    trend: TrendResponse,
-    metricComparisons: MetricComparison[]
+    trend: TrendResponse
 }

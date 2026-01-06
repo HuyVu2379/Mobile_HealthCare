@@ -6,6 +6,7 @@ import {
     View,
     Text,
     Image,
+    TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -46,6 +47,8 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking, 
         status: AppointmentStatusEnum.PENDING,
         consultationType: ConsultationType.DIRECT_CONSULTATION,
         addressDetail: "",
+        hasPredict: false,
+        paymentMethod: "CASH",
     });
     // Use AppointmentContext instead of hook
     const { doctors, loading, error, handleGetDoctorByDateAndTimeSlot } = useAppointmentContext();
@@ -56,6 +59,7 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking, 
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<ConsultationType | null>(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"CASH" | "BANK">("CASH");
 
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
     const [availableSlotIds, setAvailableSlotIds] = useState<number[]>([]); // Danh sách slot ID khả dụng cho bác sĩ khi đổi lịch
@@ -233,12 +237,15 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking, 
             status: AppointmentStatusEnum.PENDING,
             consultationType: ConsultationType.DIRECT_CONSULTATION,
             addressDetail: "",
+            hasPredict: false,
+            paymentMethod: "CASH",
         });
         setSelectedService(null);
         setSelectedDoctor(null);
         setSelectedDate(null);
         setSelectedTimeSlot(null);
         setSelectedMethod(null);
+        setSelectedPaymentMethod("CASH");
     }, [user?.userId]);
 
     const handleCancel = useCallback(() => {
@@ -411,6 +418,50 @@ const BookingAppointment: React.FC<BookingAppointmentProps> = ({ handleBooking, 
                     />
                 )}
 
+                {/* Payment Method Selection - Only show if symptoms are entered */}
+                {selectedMethod && bookingState.symptoms.trim() && (
+                    <View style={styles.paymentSection}>
+                        <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+                        <View style={styles.paymentMethodContainer}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentMethodButton,
+                                    selectedPaymentMethod === "CASH" && styles.paymentMethodButtonSelected
+                                ]}
+                                onPress={() => {
+                                    setSelectedPaymentMethod("CASH");
+                                    setBookingState(prev => ({ ...prev, paymentMethod: "CASH" }));
+                                }}
+                            >
+                                <Text style={styles.paymentMethodIcon}>💵</Text>
+                                <Text style={[
+                                    styles.paymentMethodText,
+                                    selectedPaymentMethod === "CASH" && styles.paymentMethodTextSelected
+                                ]}>Tiền mặt</Text>
+                                <Text style={styles.paymentMethodDesc}>Thanh toán tại phòng khám</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentMethodButton,
+                                    selectedPaymentMethod === "BANK" && styles.paymentMethodButtonSelected
+                                ]}
+                                onPress={() => {
+                                    setSelectedPaymentMethod("BANK");
+                                    setBookingState(prev => ({ ...prev, paymentMethod: "BANK" }));
+                                }}
+                            >
+                                <Text style={styles.paymentMethodIcon}>🏦</Text>
+                                <Text style={[
+                                    styles.paymentMethodText,
+                                    selectedPaymentMethod === "BANK" && styles.paymentMethodTextSelected
+                                ]}>Chuyển khoản</Text>
+                                <Text style={styles.paymentMethodDesc}>Thanh toán online qua PayOS</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
                 {/* Action Buttons */}
                 <ActionButtons
                     onCancel={handleCancel}
@@ -554,6 +605,44 @@ const styles = StyleSheet.create({
         color: '#757575',
         marginTop: 8,
         fontStyle: 'italic',
+    },
+    paymentSection: {
+        marginBottom: 24,
+    },
+    paymentMethodContainer: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    paymentMethodButton: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 2,
+        borderColor: '#E0E0E0',
+        alignItems: 'center',
+    },
+    paymentMethodButtonSelected: {
+        borderColor: '#4CAF50',
+        backgroundColor: '#E8F5E9',
+    },
+    paymentMethodIcon: {
+        fontSize: 32,
+        marginBottom: 8,
+    },
+    paymentMethodText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 4,
+    },
+    paymentMethodTextSelected: {
+        color: '#4CAF50',
+    },
+    paymentMethodDesc: {
+        fontSize: 12,
+        color: '#999',
+        textAlign: 'center',
     },
 });
 

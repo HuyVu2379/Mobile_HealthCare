@@ -10,18 +10,31 @@ export interface GetAppointmentRequest {
 
 export interface Appointment {
     appointmentId: String;
+    patientId: String;
+    patientName: String;
+    doctorId: String;
+    doctorName: String;
+    specialty: String;
     appointmentDate: String;
     consultationType: ConsultationType;
     symptoms: String;
     status: AppointmentStatusEnum;
     note: String;
-    hasPredict: Boolean
+    slotId: number;
+    paymentStatus: PaymentStatusEnum;
+    hasPredict: Boolean;
     addressDetail: String;
     doctor: Doctor;
+    paymentMethod: String;
     patient: Patient;
     timeSlot: TimeSlot;
+    relatedRecordId: String;
 }
-
+export enum PaymentStatusEnum {
+    UNPAID = "UNPAID",
+    PAID = "PAID",
+    REFUNDED = "REFUNDED"
+}
 export interface Doctor {
     doctorId: string;
     email: string;
@@ -69,6 +82,7 @@ export const ConsultationTypeLabels: Record<ConsultationType, string> = {
 };
 
 export enum AppointmentStatusEnum {
+    PAYMENT_PENDING = "PAYMENT_PENDING",  // Chờ thanh toán - chưa gửi thông báo cho bác sĩ
     PENDING = "PENDING",
     CONFIRMED = "CONFIRMED",
     CANCELED = "CANCELED",
@@ -80,6 +94,7 @@ export enum AppointmentStatusEnum {
 
 // Labels hiển thị cho AppointmentStatusEnum
 export const AppointmentStatusLabels: Record<AppointmentStatusEnum, string> = {
+    [AppointmentStatusEnum.PAYMENT_PENDING]: "Chờ thanh toán",
     [AppointmentStatusEnum.PENDING]: "Đang chờ",
     [AppointmentStatusEnum.CONFIRMED]: "Đã xác nhận",
     [AppointmentStatusEnum.CANCELED]: "Đã hủy",
@@ -95,6 +110,7 @@ export interface EventSocketAppointment {
     doctorId: String | null;
     event: ScheduleSocketEvent | null;
     status: AppointmentStatusEnum | null;
+    hasPredict: boolean | null;
     createAppointmentRequest: CreateAppointmentRequest | null;
     updateAppointmentRequest: UpdateAppointmentRequest | null;
 }
@@ -116,6 +132,8 @@ export interface CreateAppointmentRequest {
     status: AppointmentStatusEnum;
     consultationType: ConsultationType;
     addressDetail: string;
+    hasPredict: boolean;
+    paymentMethod: string;
 }
 
 export interface UpdateAppointmentRequest {

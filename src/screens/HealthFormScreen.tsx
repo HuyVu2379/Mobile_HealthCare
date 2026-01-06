@@ -187,25 +187,12 @@ const HealthFormScreen: React.FC = () => {
     const validateForm = (): boolean => {
         const newErrors: Partial<HealthFormData> = {};
 
-        // Validate required fields
-        const requiredFields: (keyof HealthFormData)[] = [
-            'serum_creatinine',
-            'gfr',
-            'physical_activity',
-        ];
-
-        requiredFields.forEach(field => {
-            if (!formData[field].trim()) {
-                newErrors[field] = 'Trường này là bắt buộc';
-            }
-        });
-
-        // Validate numeric fields
+        // Validate numeric fields only if they have values
         const numericFields = ['serum_creatinine', 'gfr', 'bun', 'serum_calcium', 'c3_c4', 'oxalate_levels', 'urine_ph', 'blood_pressure', 'water_intake'];
 
         numericFields.forEach(field => {
             const value = formData[field as keyof HealthFormData];
-            if (value && isNaN(Number(value))) {
+            if (value && value.trim() !== '' && isNaN(Number(value))) {
                 newErrors[field as keyof HealthFormData] = 'Vui lòng nhập số hợp lệ';
             }
         });
@@ -248,12 +235,14 @@ const HealthFormScreen: React.FC = () => {
                                 healthMetrics: healthMetrics
                             };
 
-                            await handleCreatePredict(createPredictData);
+                            const predictResponse = await handleCreatePredict(createPredictData);
 
                             // Get alert trends after creating prediction
-                            const alertData = await handleGetAlert(user.userId);
-                            if (alertData) {
-                                setAlertResult(alertData);
+                            if (predictResponse && predictResponse.data) {
+                                const alertData = await handleGetAlert(predictResponse.data);
+                                if (alertData) {
+                                    setAlertResult(alertData);
+                                }
                             }
 
                             // Reset form to initial state after successful submission
@@ -592,7 +581,7 @@ const HealthFormScreen: React.FC = () => {
                             </View>
                         </View>
 
-                        {/* Metric Comparisons */}
+                        {/* Metric Comparisons
                         {alertResult.metricComparisons && alertResult.metricComparisons.length > 0 && (
                             <View style={styles.metricComparisonsContainer}>
                                 <Text style={styles.metricComparisonsTitle}>So Sánh Chỉ Số Sức Khỏe</Text>
@@ -629,7 +618,7 @@ const HealthFormScreen: React.FC = () => {
                                     </View>
                                 ))}
                             </View>
-                        )}
+                        )} */}
                     </View>
                 </View>
             )}

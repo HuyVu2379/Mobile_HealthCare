@@ -24,6 +24,28 @@ const formatDateTime = (dateString: string) => {
     }
 };
 
+const formatDate = (dateString: string) => {
+    try {
+        const date = new Date(dateString);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        return dateString;
+    }
+};
+
+const formatFrequency = (frequencies: string[]) => {
+    const frequencyMap: { [key: string]: string } = {
+        'MORNING': 'Sáng',
+        'AFTERNOON': 'Chiều',
+        'EVENING': 'Tối',
+        'NIGHT': 'Đêm',
+    };
+    return frequencies.map(f => frequencyMap[f] || f).join(', ');
+};
+
 const MedicalRecordDetailScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const route = useRoute<MedicalRecordDetailRouteProp>();
@@ -93,8 +115,8 @@ const MedicalRecordDetailScreen = () => {
                         <Text style={styles.sectionTitle}>🏥 Chẩn đoán & Điều trị</Text>
                         <View style={styles.card}>
                             <InfoRow label="Triệu chứng" value={String(record.symptoms || 'Không có')} multiline />
-                            <InfoRow label="Chẩn đoán" value={String(record.diagnosis)} multiline highlight />
-                            <InfoRow label="Điều trị" value={String(record.treatment)} multiline />
+                            <InfoRow label="Chẩn đoán" value={record.diagnosis ? String(record.diagnosis) : 'Không có chẩn đoán'} multiline highlight />
+                            <InfoRow label="Điều trị" value={String(record.treatment || 'Không có')} multiline />
                             <InfoRow label="Ghi chú của bác sĩ" value={String(record.doctorNote || 'Không có')} multiline />
                         </View>
                     </View>
@@ -103,8 +125,8 @@ const MedicalRecordDetailScreen = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>💊 Tình trạng</Text>
                         <View style={styles.card}>
-                            <InfoRow label="Trạng thái" value={String(record.stage)} />
-                            <InfoRow label="Tình trạng sức khỏe" value={String(record.statusHealth)} />
+                            <InfoRow label="Trạng thái" value={record.stage ? String(record.stage) : 'Không có'} />
+                            <InfoRow label="Tình trạng sức khỏe" value={record.statusHealth ? String(record.statusHealth) : 'Không có'} />
                             {record.followUpDate && (
                                 <InfoRow
                                     label="Ngày tái khám"
@@ -120,10 +142,20 @@ const MedicalRecordDetailScreen = () => {
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>💊 Đơn thuốc</Text>
                             {record.prescriptions.map((prescription: any, index: number) => (
-                                <View key={index} style={styles.card}>
-                                    <Text style={styles.prescriptionTitle}>Đơn thuốc #{index + 1}</Text>
-                                    {/* Hiển thị thông tin đơn thuốc nếu có */}
-                                    <Text style={styles.prescriptionText}>{JSON.stringify(prescription, null, 2)}</Text>
+                                <View key={prescription.prescriptionId || index} style={styles.card}>
+                                    <Text style={styles.prescriptionTitle}>{prescription.medicalName || `Đơn thuốc #${index + 1}`}</Text>
+                                    <View style={styles.divider} />
+                                    <InfoRow label="Liều lượng" value={`${prescription.dosage || 'N/A'} mg`} />
+                                    <InfoRow label="Thời gian" value={prescription.duration || 'N/A'} />
+                                    <InfoRow
+                                        label="Tần suất"
+                                        value={prescription.frequency ? formatFrequency(prescription.frequency) : 'N/A'}
+                                    />
+                                    <InfoRow label="Từ ngày" value={prescription.startDate ? formatDate(prescription.startDate) : 'N/A'} />
+                                    <InfoRow label="Đến ngày" value={prescription.endDate ? formatDate(prescription.endDate) : 'N/A'} />
+                                    {prescription.notes && (
+                                        <InfoRow label="Ghi chú" value={prescription.notes} multiline />
+                                    )}
                                 </View>
                             ))}
                         </View>
@@ -293,6 +325,11 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#333',
         fontFamily: 'monospace',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E0E0E0',
+        marginVertical: 12,
     },
     imageGrid: {
         flexDirection: 'row',

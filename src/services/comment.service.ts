@@ -19,3 +19,4 @@ export const getCommentByPostId = async (postId: string, page: number, size: num
     const result = await axiosConfig.get(`${api_url}/byPost/${postId}`, { params });
     return result;
 }
+

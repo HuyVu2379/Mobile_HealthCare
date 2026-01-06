@@ -13,7 +13,7 @@ interface AppointmentContextType {
     doctors: Doctor[];
     refresh: boolean;
     handleGetAppointments: (req: GetAppointmentRequest) => Promise<void>;
-    handleSendSocketEventAppointment: (data: EventSocketAppointment, onSuccess?: () => void) => void;
+    handleSendSocketEventAppointment: (data: EventSocketAppointment, onSuccess?: (appointmentId?: string) => void) => void;
     handleGetDoctorByDateAndTimeSlot: (date: string, timeSlotId: number) => Promise<void>;
 }
 
@@ -82,7 +82,8 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
 
                             if (callback) {
                                 console.log("🎯 Executing success callback for:", usedKey);
-                                callback();
+                                console.log("📋 Appointment ID from response:", messageData.appointmentId);
+                                callback(messageData.appointmentId);
                                 const newMap = new Map(prev);
                                 newMap.delete(usedKey);
                                 return newMap;
@@ -141,7 +142,7 @@ export const AppointmentProvider: React.FC<AppointmentProviderProps> = ({ childr
         }
     }, []);
 
-    const handleSendSocketEventAppointment = useCallback((data: EventSocketAppointment, onSuccess?: () => void) => {
+    const handleSendSocketEventAppointment = useCallback((data: EventSocketAppointment, onSuccess?: (appointmentId?: string) => void) => {
         console.log("📤 Sending appointment event:", data);
         send(SOCKET_ACTIONS.APPOINTMENT, data);
 

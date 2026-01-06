@@ -10,13 +10,18 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import DatePicker from 'react-native-date-picker';
+import Toast from 'react-native-toast-message';
 import AppointmentCard from '../components/ui/AppointmentHistory/AppointmentCard';
 import { BookingAppointment } from '../components/ui/AppointmentHistory';
+import PaymentWebView from '../components/ui/PaymentWebView';
 import { useAppointmentContext } from '../contexts';
 import { useAuthContext } from '../contexts/AuthContext';
-import { Appointment, AppointmentStatusEnum, CreateAppointmentRequest } from '../types/appointment';
+import { Appointment, AppointmentStatusEnum, CreateAppointmentRequest, Doctor } from '../types/appointment';
 import { useChatContext } from '../contexts';
 import { useRoom } from '../hooks/useRoom';
+import { usePaymentPolling } from '../hooks/usePaymentPolling';
+import { getDoctorScheduleByDoctorIdAndDate } from '../services/schedule.service';
+import { createPayment } from '../services/payment.service';
 const AppointmentTimelineScreen: React.FC = () => {
     const { user } = useAuthContext();
     const isFirstMount = useRef(true);
@@ -38,6 +43,19 @@ const AppointmentTimelineScreen: React.FC = () => {
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [appointmentToReschedule, setAppointmentToReschedule] = useState<Appointment | null>(null);
+
+    // Payment state
+    const [showPaymentWebView, setShowPaymentWebView] = useState(false);
+    const [paymentUrl, setPaymentUrl] = useState('');
+    const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
+    const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
+    const [pendingAppointmentData, setPendingAppointmentData] = useState<{
+        bookingData: CreateAppointmentRequest;
+        selectedDoctor: Doctor | null;
+    } | null>(null);
+
+    // Payment polling hook
+    const { isPolling, startPolling, stopPolling } = usePaymentPolling();
 
     // DatePicker states
     const [fromDateObj, setFromDateObj] = useState(new Date());
@@ -66,13 +84,33 @@ const AppointmentTimelineScreen: React.FC = () => {
     const { appointments, handleGetAppointments, error, loading, handleSendSocketEventAppointment, refresh } = useAppointmentContext();
 
     // Hàm chuyển đổi BookingState sang EventSocketAppointment
-    const handleBookingSubmit = (bookingData: CreateAppointmentRequest, selectedDoctor: any) => {
-        // Chuyển đổi dữ liệu từ BookingState sang EventSocketAppointment
+    const handleBookingSubmit = async (bookingData: CreateAppointmentRequest, selectedDoctor: Doctor | null) => {
+        try {
+            // Kiểm tra payment method
+            if (bookingData.paymentMethod === "BANK") {
+                // Flow BANK: Thanh toán online qua PayOS
+                await handleBankPaymentFlow(bookingData, selectedDoctor);
+            } else {
+                // Flow CASH: Đặt lịch trực tiếp qua WebSocket
+                await handleCashPaymentFlow(bookingData, selectedDoctor);
+            }
+        } catch (error) {
+            console.error("❌ Error in booking submit:", error);
+            Toast.show({
+                type: "error",
+                text1: "Lỗi đặt lịch",
+                text2: "Có lỗi xảy ra, vui lòng thử lại",
+            });
+        }
+    };
+
+    // Flow CASH: Đặt lịch trực tiếp
+    const handleCashPaymentFlow = (bookingData: CreateAppointmentRequest, selectedDoctor: Doctor | null) => {
         const eventData = {
             appointmentId: null,
             patientId: user?.userId || null,
             doctorId: bookingData.doctorId || null,
-            event: 'BOOKING_APPOINTMENT', // hoặc giá trị enum phù hợp
+            event: 'BOOKING_APPOINTMENT',
             status: AppointmentStatusEnum.PENDING,
             createAppointmentRequest: {
                 patientId: bookingData.patientId,
@@ -84,21 +122,19 @@ const AppointmentTimelineScreen: React.FC = () => {
                 status: AppointmentStatusEnum.PENDING,
                 consultationType: bookingData.consultationType,
                 addressDetail: bookingData.addressDetail,
+                hasPredict: bookingData.hasPredict || false,
+                paymentMethod: bookingData.paymentMethod,
             },
             updateAppointmentRequest: null,
         };
 
-        handleSendSocketEventAppointment(eventData as any, () => {
-            // Callback này sẽ được gọi khi booking appointment thành công
-            console.log("✅ Booking appointment successful, creating chat group...");
+        handleSendSocketEventAppointment(eventData as any, (appointmentId) => {
+            console.log("✅ Booking appointment successful (CASH), appointmentId:", appointmentId);
             if (bookingData.doctorId && user?.userId && selectedDoctor) {
-                console.log("check create group 1");
-                // Sử dụng setTimeout để tránh update state trong render cycle
                 setTimeout(() => {
-                    // Tạo group chat giữa bệnh nhân và bác sĩ với thông tin đầy đủ từ selectedDoctor
                     createGroup({
                         groupName: `Tư vấn - ${selectedDoctor.fullName || 'Bác sĩ'}`,
-                        appointmentId: bookingData.scheduleId?.toString() || '',
+                        appointmentId: appointmentId || bookingData.scheduleId?.toString() || '',
                         members: [
                             {
                                 userId: user.userId,
@@ -112,11 +148,190 @@ const AppointmentTimelineScreen: React.FC = () => {
                             }
                         ]
                     });
-                    console.log("check create group 2");
                 }, 0);
             }
         });
+    };
 
+    // Flow BANK: Thanh toán online qua PayOS
+    const handleBankPaymentFlow = async (bookingData: CreateAppointmentRequest, selectedDoctor: Doctor | null) => {
+        try {
+            // Bước 2: Tạo appointment với status PAYMENT_PENDING
+            const eventData = {
+                appointmentId: null,
+                patientId: user?.userId || null,
+                doctorId: bookingData.doctorId || null,
+                event: 'BOOKING_APPOINTMENT',
+                status: AppointmentStatusEnum.PAYMENT_PENDING,
+                createAppointmentRequest: {
+                    patientId: bookingData.patientId,
+                    scheduleId: bookingData.scheduleId,
+                    doctorId: bookingData.doctorId,
+                    symptoms: bookingData.symptoms,
+                    note: bookingData.note,
+                    slotId: bookingData.slotId,
+                    status: AppointmentStatusEnum.PAYMENT_PENDING,
+                    consultationType: bookingData.consultationType,
+                    addressDetail: bookingData.addressDetail,
+                    hasPredict: bookingData.hasPredict || false,
+                    paymentMethod: bookingData.paymentMethod,
+                },
+                updateAppointmentRequest: null,
+            };
+
+            // Lưu thông tin để xử lý sau khi thanh toán thành công
+            setPendingAppointmentData({ bookingData, selectedDoctor });
+
+            // Gửi WebSocket để tạo appointment
+            handleSendSocketEventAppointment(eventData as any, async (appointmentId) => {
+                console.log("✅ Appointment created with PAYMENT_PENDING status");
+                console.log("📋 Real appointmentId from WebSocket:", appointmentId);
+
+                // Bước 3: Tạo payment PayOS với appointmentId thật từ response
+                if (!appointmentId) {
+                    console.error("❌ No appointmentId received from WebSocket");
+                    Toast.show({
+                        type: "error",
+                        text1: "Lỗi đặt lịch",
+                        text2: "Không nhận được mã lịch hẹn",
+                    });
+                    return;
+                }
+
+                // Lưu appointmentId thực
+                setCurrentAppointmentId(appointmentId);
+
+                try {
+                    const paymentData = {
+                        appointmentId: appointmentId,
+                        amount: selectedDoctor?.examinationFee || 0,
+                        description: `Thanh toán khám bệnh - ${selectedDoctor?.fullName || 'Bác sĩ'}`,
+                        returnUrl: "", // Mobile không cần returnUrl
+                        cancelUrl: "", // Mobile không cần cancelUrl
+                    };
+
+                    console.log("💳 Creating payment...", paymentData);
+                    const paymentResponse = await createPayment(paymentData);
+                    console.log("✅ Payment created:", paymentResponse);
+
+                    // Lưu payment info
+                    setCurrentPaymentId(paymentResponse.paymentId);
+                    setPaymentUrl(paymentResponse.paymentUrl);
+
+                    // Mở WebView để thanh toán
+                    setShowPaymentWebView(true);
+
+                    // Bắt đầu polling để kiểm tra trạng thái thanh toán
+                    startPolling(
+                        paymentResponse.paymentId,
+                        () => {
+                            // onSuccess: Thanh toán thành công
+                            handlePaymentSuccess();
+                        },
+                        (error: string) => {
+                            // onFailed: Thanh toán thất bại
+                            handlePaymentFailed(error);
+                        }
+                    );
+                } catch (paymentError) {
+                    console.error("❌ Error creating payment:", paymentError);
+                    Toast.show({
+                        type: "error",
+                        text1: "Lỗi tạo thanh toán",
+                        text2: "Không thể tạo link thanh toán. Vui lòng thử lại.",
+                    });
+                }
+            });
+        } catch (error) {
+            console.error("❌ Error in bank payment flow:", error);
+            Toast.show({
+                type: "error",
+                text1: "Lỗi đặt lịch",
+                text2: "Có lỗi xảy ra, vui lòng thử lại",
+            });
+        }
+    };
+
+    // Xử lý khi thanh toán thành công
+    const handlePaymentSuccess = () => {
+        console.log("✅ Payment successful!");
+        setShowPaymentWebView(false);
+        stopPolling();
+
+        Toast.show({
+            type: "success",
+            text1: "Thanh toán thành công",
+            text2: "Lịch hẹn của bạn đã được xác nhận",
+        });
+
+        // Tạo chat group nếu có thông tin
+        if (pendingAppointmentData?.selectedDoctor && user?.userId) {
+            const { bookingData, selectedDoctor } = pendingAppointmentData;
+            setTimeout(() => {
+                createGroup({
+                    groupName: `Tư vấn - ${selectedDoctor.fullName || 'Bác sĩ'}`,
+                    appointmentId: currentAppointmentId || bookingData.scheduleId?.toString() || '',
+                    members: [
+                        {
+                            userId: user.userId,
+                            fullName: user.fullName || 'Bệnh nhân',
+                            avatarUrl: user.avatarUrl || ''
+                        },
+                        {
+                            userId: selectedDoctor.doctorId,
+                            fullName: selectedDoctor.fullName || 'Bác sĩ',
+                            avatarUrl: selectedDoctor.avatarUrl || ''
+                        }
+                    ]
+                });
+            }, 0);
+        }
+
+        // Clear pending data
+        setPendingAppointmentData(null);
+        setCurrentPaymentId(null);
+        setCurrentAppointmentId(null);
+        setPaymentUrl('');
+    };
+
+    // Xử lý khi thanh toán thất bại
+    const handlePaymentFailed = (error: string) => {
+        console.log("❌ Payment failed:", error);
+        setShowPaymentWebView(false);
+        stopPolling();
+
+        Toast.show({
+            type: "error",
+            text1: "Thanh toán thất bại",
+            text2: error || "Vui lòng thử lại",
+        });
+
+        // Clear pending data
+        setPendingAppointmentData(null);
+        setCurrentPaymentId(null);
+        setCurrentAppointmentId(null);
+        setPaymentUrl('');
+    };
+
+    // Đóng WebView thanh toán
+    const handleClosePaymentWebView = () => {
+        if (isPolling) {
+            Toast.show({
+                type: "info",
+                text1: "Đang kiểm tra trạng thái thanh toán",
+                text2: "Vui lòng đợi trong giây lát...",
+            });
+            return;
+        }
+
+        setShowPaymentWebView(false);
+        stopPolling();
+
+        // Clear data
+        setPendingAppointmentData(null);
+        setCurrentPaymentId(null);
+        setCurrentAppointmentId(null);
+        setPaymentUrl('');
     };
 
     // Hàm xử lý đổi lịch
@@ -445,6 +660,15 @@ const AppointmentTimelineScreen: React.FC = () => {
                 onCancel={() => {
                     setShowToDatePicker(false);
                 }}
+            />
+
+            {/* Payment WebView */}
+            <PaymentWebView
+                visible={showPaymentWebView}
+                paymentUrl={paymentUrl}
+                onClose={handleClosePaymentWebView}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentFailed={handlePaymentFailed}
             />
         </View>
     );

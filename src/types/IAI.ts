@@ -8,3 +8,12 @@ export type ChatResponse = {
     response: String,
     confidence: Number,
 }
+export interface PredictResponse {
+    predictId: string;
+    patientId: string;
+    stage: number;
+    recommendations: string[];
+    confidence: number;
+    createdAt: string;
+    updatedAt: string;
+}

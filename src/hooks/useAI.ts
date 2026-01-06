@@ -1,6 +1,7 @@
 import { predictCKD, getAlert } from "../services/AI.service"
 import { createPredict } from "../services/predict.service"
 import { CreatePredictRequest, HealthFormApiData } from "../types"
+import { PredictResponse } from "../types/IAI"
 const useAI = () => {
     const handlePredictCKD = async (data: HealthFormApiData) => {
         try {
@@ -21,9 +22,9 @@ const useAI = () => {
             console.error("Error during create prediction:", error);
         }
     }
-    const handleGetAlert = async (patientId: String) => {
+    const handleGetAlert = async (request: PredictResponse) => {
         try {
-            const response = await getAlert(patientId)
+            const response = await getAlert(request)
             console.log("Get alert response:", response)
             return response
         } catch (error) {
